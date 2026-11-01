@@ -185,9 +185,8 @@ export class Game {
 		this.player.reset();
 		this.track.reset();
 		this.obstacles.reset();
-		this.starfield.update(0);
-
 		this.updateCamera(1.0);
+		this.starfield.update(this.camera.position);
 
 		if (this.uiListener) {
 			this.uiListener.onScoreUpdate(this.score, this.distance, this.speed, this.gems);
@@ -247,10 +246,9 @@ export class Game {
 			this.distance = this.player.z;
 			this.score += this.speed * dt * 0.8;
 
-			// Update Track, Obstacles, Stars
+			// Update Track & Obstacles
 			this.track.update(this.player.z);
 			this.obstacles.update(dt, this.player.z, this.speed);
-			this.starfield.update(this.player.z);
 
 			// Collisions
 			if (this.obstacles.checkCollision(this.player.x, this.player.z, this.player.jumpY)) {
@@ -271,6 +269,9 @@ export class Game {
 
 			// Update Camera smoothly
 			this.updateCamera(0.2);
+
+			// Keep starfield centered around the camera in 360 degrees
+			this.starfield.update(this.camera.position);
 
 			// Dynamic FOV sensation
 			const targetFov = 65 + (this.speed - BASE_SPEED) * 0.45;
