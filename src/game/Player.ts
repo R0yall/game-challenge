@@ -1,11 +1,9 @@
 import * as THREE from 'three';
 import {
-	SLOPE_ANGLE,
 	HALF_TRACK,
 	PLAYER_RADIUS,
 	JUMP_VELOCITY,
-	GRAVITY,
-	getSlopePosition
+	GRAVITY
 } from './SlopeMath.ts';
 import { sounds } from './Audio.ts';
 
@@ -15,18 +13,16 @@ export class Player {
 	public shadowMesh: THREE.Mesh;
 	public auraMesh: THREE.Mesh;
 
-	public s = 0; // distance down the slope
-	public x = 0; // horizontal position
-	public jumpH = 0; // height above track
-	public vy = 0; // jump velocity along surface normal
+	public z = 0; // forward distance
+	public x = 0; // horizontal lane position
+	public jumpY = 0; // height above road surface (0 = on road)
+	public vy = 0; // jump velocity
 	public isGrounded = true;
 	public rollAngle = 0;
 
 	// Inputs
 	public moveLeft = false;
 	public moveRight = false;
-
-	private tempPos = new THREE.Vector3();
 
 	constructor() {
 		this.group = new THREE.Group();
@@ -37,7 +33,7 @@ export class Player {
 			color: 0x00ffff,
 			emissive: 0x0066aa,
 			emissiveIntensity: 0.8,
-			metalness: 0.8,
+			metalness: 0.85,
 			roughness: 0.15
 		});
 		this.sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
@@ -58,11 +54,12 @@ export class Player {
 			opacity: 0.55
 		});
 		this.shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
-		this.shadowMesh.rotation.x = -Math.PI / 2 - SLOPE_ANGLE;
-		// Position shadow slightly above road surface to prevent z-fighting
+		this.shadowMesh.rotation.x = -Math.PI / 2;
+		// Exactly 0.02 above the road surface to prevent z-fighting
 		this.shadowMesh.position.y = 0.02;
+		this.group.add(this.shadowMesh);
 
-		this.updateMeshTransforms();
+		this.updateTransforms();
 	}
 
 	triggerJump(): void {
@@ -74,12 +71,12 @@ export class Player {
 	}
 
 	update(dt: number, speed: number): void {
-		// 1. Forward progression down slope
-		const moveS = speed * dt;
-		this.s += moveS;
+		// 1. Forward progression
+		const moveZ = speed * dt;
+		this.z += moveZ;
 
 		// Ball rolling rotation (circumference = 2 * PI * r)
-		this.rollAngle += moveS / PLAYER_RADIUS;
+		this.rollAngle += moveZ / PLAYER_RADIUS;
 
 		// 2. Horizontal Steering
 		const steerSpeed = 16.5;
@@ -90,49 +87,50 @@ export class Player {
 		if (this.x < -HALF_TRACK) this.x = -HALF_TRACK;
 		else if (this.x > HALF_TRACK) this.x = HALF_TRACK;
 
-		// 3. Jump Physics along surface normal
+		// 3. Jump Physics
 		if (!this.isGrounded) {
 			this.vy += GRAVITY * dt;
-			this.jumpH += this.vy * dt;
+			this.jumpY += this.vy * dt;
 
-			if (this.jumpH <= 0) {
-				this.jumpH = 0;
+			if (this.jumpY <= 0) {
+				this.jumpY = 0;
 				this.vy = 0;
 				this.isGrounded = true;
 			}
 		}
 
-		this.updateMeshTransforms();
+		this.updateTransforms();
 	}
 
-	private updateMeshTransforms(): void {
-		// Player center is at height: PLAYER_RADIUS + jumpH above track
-		getSlopePosition(this.x, this.s, PLAYER_RADIUS + this.jumpH, this.tempPos);
-		this.group.position.copy(this.tempPos);
+	private updateTransforms(): void {
+		// Position group at (x, 0, z) on the road surface
+		this.group.position.set(this.x, 0, this.z);
 
-		// Roll ball downhill (pitch around X) + tilt horizontally when steering
+		// Ball center sits exactly at PLAYER_RADIUS + jumpY
+		const ballY = PLAYER_RADIUS + this.jumpY;
+		this.sphereMesh.position.y = ballY;
+		this.auraMesh.position.y = ballY;
+
+		// Ball rolling animation (around X) + slight tilt when steering (around Z)
 		this.sphereMesh.rotation.x = this.rollAngle;
 		const tiltZ = this.moveRight ? -0.22 : this.moveLeft ? 0.22 : 0;
 		this.sphereMesh.rotation.z = tiltZ;
-
-		// Update shadow position on track surface directly below player
-		getSlopePosition(this.x, this.s, 0.03, this.tempPos);
-		this.shadowMesh.position.copy(this.tempPos);
+		this.auraMesh.rotation.z = tiltZ;
 
 		// Scale shadow down when jumping high
-		const shadowScale = Math.max(0.35, 1 - this.jumpH * 0.22);
+		const shadowScale = Math.max(0.35, 1 - this.jumpY * 0.22);
 		this.shadowMesh.scale.set(shadowScale, shadowScale, 1);
 	}
 
 	reset(): void {
-		this.s = 0;
+		this.z = 0;
 		this.x = 0;
-		this.jumpH = 0;
+		this.jumpY = 0;
 		this.vy = 0;
 		this.isGrounded = true;
 		this.rollAngle = 0;
 		this.moveLeft = false;
 		this.moveRight = false;
-		this.updateMeshTransforms();
+		this.updateTransforms();
 	}
 }

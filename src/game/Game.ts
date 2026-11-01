@@ -7,7 +7,7 @@ import { sounds } from './Audio.ts';
 import {
 	BASE_SPEED,
 	MAX_SPEED,
-	getSlopePosition
+	SLOPE_ANGLE
 } from './SlopeMath.ts';
 
 export type GameState = 'idle' | 'playing' | 'paused' | 'gameover';
@@ -30,6 +30,7 @@ export class Game {
 	private scene: THREE.Scene;
 	private camera: THREE.PerspectiveCamera;
 	private renderer: THREE.WebGLRenderer;
+	public slopeGroup: THREE.Group;
 
 	// Game Entities
 	public player: Player;
@@ -39,11 +40,12 @@ export class Game {
 
 	private uiListener?: GameUIListener;
 	private lastTime = 0;
+
+	private playerWorldPos = new THREE.Vector3();
 	private targetCamPos = new THREE.Vector3();
 	private lookAtPos = new THREE.Vector3();
 
 	constructor(canvas: HTMLCanvasElement) {
-		// Load persisted high score
 		try {
 			const saved = localStorage.getItem('viberunner_highscore');
 			if (saved) this.highScore = parseInt(saved, 10) || 0;
@@ -62,17 +64,24 @@ export class Game {
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
 		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-		// 2. Camera
+		// 2. Downhill Slope Group
+		// The entire track slopes downward into infinity
+		this.slopeGroup = new THREE.Group();
+		this.slopeGroup.rotation.x = SLOPE_ANGLE;
+		this.scene.add(this.slopeGroup);
+
+		// 3. World Camera - looks down at the downhill slope from behind
 		this.camera = new THREE.PerspectiveCamera(
 			65,
 			window.innerWidth / window.innerHeight,
 			0.1,
 			650
 		);
+		this.scene.add(this.camera);
 
-		// 3. Lighting
+		// 4. Lighting
 		const sun = new THREE.DirectionalLight(0xffffff, 2.2);
-		sun.position.set(20, 40, -10);
+		sun.position.set(20, 50, -10);
 		this.scene.add(sun);
 
 		const ambient = new THREE.AmbientLight(0x2b1055, 0.85);
@@ -81,30 +90,25 @@ export class Game {
 		const hemi = new THREE.HemisphereLight(0x00f0ff, 0x120028, 1.2);
 		this.scene.add(hemi);
 
-		// 4. Entities
+		// 5. Entities in slopeGroup
 		this.track = new Track();
-		this.scene.add(this.track.group);
+		this.slopeGroup.add(this.track.group);
 
 		this.obstacles = new ObstacleManager();
-		this.scene.add(this.obstacles.group);
+		this.slopeGroup.add(this.obstacles.group);
 
 		this.player = new Player();
-		this.scene.add(this.player.group);
-		this.scene.add(this.player.shadowMesh);
+		this.slopeGroup.add(this.player.group);
 
+		// Starfield in world space
 		this.starfield = new Starfield();
 		this.scene.add(this.starfield.points);
 
-		// Initial camera position
-		getSlopePosition(0, -9.5, 4.6, this.targetCamPos);
-		this.camera.position.copy(this.targetCamPos);
-		getSlopePosition(0, 18, 0.8, this.lookAtPos);
-		this.camera.lookAt(this.lookAtPos);
+		// Initial camera setup
+		this.updateCamera(1.0);
 
-		// Resize listener
 		window.addEventListener('resize', this.onWindowResize.bind(this));
 
-		// Start game loop
 		this.lastTime = performance.now();
 		requestAnimationFrame(this.loop.bind(this));
 	}
@@ -183,14 +187,47 @@ export class Game {
 		this.obstacles.reset();
 		this.starfield.update(0);
 
-		getSlopePosition(0, -9.5, 4.6, this.targetCamPos);
-		this.camera.position.copy(this.targetCamPos);
-		getSlopePosition(0, 18, 0.8, this.lookAtPos);
-		this.camera.lookAt(this.lookAtPos);
+		this.updateCamera(1.0);
 
 		if (this.uiListener) {
 			this.uiListener.onScoreUpdate(this.score, this.distance, this.speed, this.gems);
 		}
+	}
+
+	private updateCamera(lerpFactor = 0.2): void {
+		// Get player's world position (including slope tilt)
+		this.player.group.getWorldPosition(this.playerWorldPos);
+
+		// Calculate world direction of slope
+		const cosA = Math.cos(SLOPE_ANGLE);
+		const sinA = Math.sin(SLOPE_ANGLE);
+
+		// Place camera behind and slightly above the player along world coordinates
+		const camDistBack = 8.5;
+		const camHeightAbove = 3.6;
+
+		this.targetCamPos.set(
+			this.playerWorldPos.x * 0.45,
+			this.playerWorldPos.y + sinA * camDistBack + cosA * camHeightAbove,
+			this.playerWorldPos.z - cosA * camDistBack + sinA * camHeightAbove
+		);
+
+		if (lerpFactor >= 1.0) {
+			this.camera.position.copy(this.targetCamPos);
+		} else {
+			this.camera.position.x += (this.targetCamPos.x - this.camera.position.x) * lerpFactor;
+			this.camera.position.y += (this.targetCamPos.y - this.camera.position.y) * lerpFactor;
+			this.camera.position.z += (this.targetCamPos.z - this.camera.position.z) * lerpFactor;
+		}
+
+		// Look ahead down the slope
+		const lookAheadDist = 18;
+		this.lookAtPos.set(
+			this.playerWorldPos.x * 0.15,
+			this.playerWorldPos.y - sinA * lookAheadDist + 0.5,
+			this.playerWorldPos.z + cosA * lookAheadDist
+		);
+		this.camera.lookAt(this.lookAtPos);
 	}
 
 	private loop(time: number): void {
@@ -201,46 +238,39 @@ export class Game {
 		const dt = Math.min(rawDt, 0.08);
 
 		if (this.state === 'playing') {
-			// Accelerate speed gradually
 			if (this.speed < MAX_SPEED) {
 				this.speed += dt * 0.45;
 			}
 
 			// Update Player
 			this.player.update(dt, this.speed);
-			this.distance = this.player.s;
+			this.distance = this.player.z;
 			this.score += this.speed * dt * 0.8;
 
-			// Update Track, Obstacles & Stars
-			this.track.update(this.player.s);
-			this.obstacles.update(dt, this.player.s, this.speed);
-			this.starfield.update(this.player.s);
+			// Update Track, Obstacles, Stars
+			this.track.update(this.player.z);
+			this.obstacles.update(dt, this.player.z, this.speed);
+			this.starfield.update(this.player.z);
 
-			// Check Collisions
-			if (this.obstacles.checkCollision(this.player.x, this.player.s, this.player.jumpH)) {
+			// Collisions
+			if (this.obstacles.checkCollision(this.player.x, this.player.z, this.player.jumpY)) {
 				this.triggerGameOver();
 			}
 
-			// Check Gems
-			this.obstacles.checkGems(this.player.x, this.player.s, () => {
+			// Gems
+			this.obstacles.checkGems(this.player.x, this.player.z, () => {
 				this.gems += 1;
 				this.score += 50;
 				sounds.playGem();
 			});
 
-			// Update UI
+			// Notify UI
 			if (this.uiListener) {
 				this.uiListener.onScoreUpdate(this.score, this.distance, this.speed, this.gems);
 			}
 
-			// Smooth Camera Follow
-			getSlopePosition(this.player.x * 0.35, this.player.s - 9.5, 4.6, this.targetCamPos);
-			this.camera.position.x += (this.targetCamPos.x - this.camera.position.x) * 0.15;
-			this.camera.position.y += (this.targetCamPos.y - this.camera.position.y) * 0.22;
-			this.camera.position.z += (this.targetCamPos.z - this.camera.position.z) * 0.25;
-
-			getSlopePosition(this.player.x * 0.15, this.player.s + 18, 0.8, this.lookAtPos);
-			this.camera.lookAt(this.lookAtPos);
+			// Update Camera smoothly
+			this.updateCamera(0.2);
 
 			// Dynamic FOV sensation
 			const targetFov = 65 + (this.speed - BASE_SPEED) * 0.45;

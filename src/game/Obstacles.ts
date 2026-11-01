@@ -1,9 +1,7 @@
 import * as THREE from 'three';
 import {
-	SLOPE_ANGLE,
 	HALF_TRACK,
-	PLAYER_RADIUS,
-	getSlopePosition
+	PLAYER_RADIUS
 } from './SlopeMath.ts';
 
 export type ObstacleType = 'barrier' | 'pillar' | 'moving';
@@ -11,7 +9,7 @@ export type ObstacleType = 'barrier' | 'pillar' | 'moving';
 interface ObstacleEntity {
 	type: ObstacleType;
 	x: number;
-	s: number;
+	z: number;
 	w: number;
 	h: number;
 	d: number;
@@ -21,7 +19,7 @@ interface ObstacleEntity {
 
 interface GemEntity {
 	x: number;
-	s: number;
+	z: number;
 	collected: boolean;
 	mesh: THREE.Mesh;
 }
@@ -30,7 +28,6 @@ export class ObstacleManager {
 	public group: THREE.Group;
 	private obstacles: ObstacleEntity[] = [];
 	private gems: GemEntity[] = [];
-	private tempPos = new THREE.Vector3();
 
 	constructor() {
 		this.group = new THREE.Group();
@@ -79,7 +76,6 @@ export class ObstacleManager {
 
 		types.forEach((type, idx) => {
 			const grp = new THREE.Group();
-			grp.rotation.x = -SLOPE_ANGLE;
 
 			let w = 3.4;
 			let h = 0.85;
@@ -108,16 +104,15 @@ export class ObstacleManager {
 			}
 
 			const laneX = laneOffsets[idx % laneOffsets.length];
-			const startS = 55 + idx * 28;
+			const startZ = 55 + idx * 28;
 
-			getSlopePosition(laneX, startS, 0, this.tempPos);
-			grp.position.copy(this.tempPos);
+			grp.position.set(laneX, 0, startZ);
 
 			this.group.add(grp);
 			this.obstacles.push({
 				type,
 				x: laneX,
-				s: startS,
+				z: startZ,
 				w,
 				h,
 				d,
@@ -142,22 +137,21 @@ export class ObstacleManager {
 		for (let i = 0; i < 8; i++) {
 			const mesh = new THREE.Mesh(gemGeo, gemMat);
 			const gemX = laneOffsets[i % laneOffsets.length];
-			const gemS = 65 + i * 36;
+			const gemZ = 65 + i * 36;
 
-			getSlopePosition(gemX, gemS, 1.2, this.tempPos);
-			mesh.position.copy(this.tempPos);
+			mesh.position.set(gemX, 1.2, gemZ);
 
 			this.group.add(mesh);
 			this.gems.push({
 				x: gemX,
-				s: gemS,
+				z: gemZ,
 				collected: false,
 				mesh
 			});
 		}
 	}
 
-	update(dt: number, playerS: number, currentSpeed: number): void {
+	update(dt: number, playerZ: number, currentSpeed: number): void {
 		// 1. Move sliding obstacles
 		for (const obs of this.obstacles) {
 			if (obs.type === 'moving' && obs.speedX !== undefined) {
@@ -173,15 +167,14 @@ export class ObstacleManager {
 					obs.speedX = -Math.abs(obs.speedX);
 				}
 
-				getSlopePosition(obs.x, obs.s, 0, this.tempPos);
-				obs.group.position.copy(this.tempPos);
+				obs.group.position.x = obs.x;
 			}
 
 			// Recycle obstacle when behind player
-			if (obs.s < playerS - 15) {
-				const maxS = Math.max(...this.obstacles.map((o) => o.s));
+			if (obs.z < playerZ - 15) {
+				const maxZ = Math.max(...this.obstacles.map((o) => o.z));
 				const spacing = Math.max(18, 30 - (currentSpeed - 26) * 0.25);
-				obs.s = maxS + spacing;
+				obs.z = maxZ + spacing;
 
 				const laneRoll = Math.random();
 				if (laneRoll < 0.33) obs.x = -3.2;
@@ -193,8 +186,7 @@ export class ObstacleManager {
 					obs.speedX = (Math.random() > 0.5 ? 1 : -1) * (5 + Math.random() * 3);
 				}
 
-				getSlopePosition(obs.x, obs.s, 0, this.tempPos);
-				obs.group.position.copy(this.tempPos);
+				obs.group.position.set(obs.x, 0, obs.z);
 			}
 		}
 
@@ -205,9 +197,9 @@ export class ObstacleManager {
 			}
 
 			// Recycle gem when behind player
-			if (gem.s < playerS - 15) {
-				const maxGemS = Math.max(...this.gems.map((g) => g.s));
-				gem.s = maxGemS + 35;
+			if (gem.z < playerZ - 15) {
+				const maxGemZ = Math.max(...this.gems.map((g) => g.z));
+				gem.z = maxGemZ + 35;
 				gem.collected = false;
 				gem.mesh.visible = true;
 
@@ -216,25 +208,24 @@ export class ObstacleManager {
 				else if (laneRoll < 0.66) gem.x = 0;
 				else gem.x = 3.2;
 
-				getSlopePosition(gem.x, gem.s, 1.2, this.tempPos);
-				gem.mesh.position.copy(this.tempPos);
+				gem.mesh.position.set(gem.x, 1.2, gem.z);
 			}
 		}
 	}
 
-	checkCollision(playerX: number, playerS: number, playerJumpH: number): boolean {
+	checkCollision(playerX: number, playerZ: number, playerJumpY: number): boolean {
 		for (const obs of this.obstacles) {
-			const ds = Math.abs(playerS - obs.s);
-			const allowedDs = obs.d / 2 + PLAYER_RADIUS * 0.75;
+			const dz = Math.abs(playerZ - obs.z);
+			const allowedDz = obs.d / 2 + PLAYER_RADIUS * 0.75;
 
-			if (ds < allowedDs) {
+			if (dz < allowedDz) {
 				const dx = Math.abs(playerX - obs.x);
 				const allowedDx = obs.w / 2 + PLAYER_RADIUS * 0.7;
 
 				if (dx < allowedDx) {
 					// Check jump clearance
 					const clearance = obs.h - PLAYER_RADIUS * 0.4;
-					if (playerJumpH < clearance) {
+					if (playerJumpY < clearance) {
 						return true; // CRASH!
 					}
 				}
@@ -243,12 +234,12 @@ export class ObstacleManager {
 		return false;
 	}
 
-	checkGems(playerX: number, playerS: number, onCollect: () => void): void {
+	checkGems(playerX: number, playerZ: number, onCollect: () => void): void {
 		for (const gem of this.gems) {
 			if (gem.collected) continue;
-			const ds = Math.abs(playerS - gem.s);
+			const dz = Math.abs(playerZ - gem.z);
 			const dx = Math.abs(playerX - gem.x);
-			if (ds < PLAYER_RADIUS + 0.8 && dx < PLAYER_RADIUS + 0.8) {
+			if (dz < PLAYER_RADIUS + 0.8 && dx < PLAYER_RADIUS + 0.8) {
 				gem.collected = true;
 				gem.mesh.visible = false;
 				onCollect();
@@ -259,22 +250,20 @@ export class ObstacleManager {
 	reset(): void {
 		const laneOffsets = [-3.2, 0, 3.2];
 		this.obstacles.forEach((obs, idx) => {
-			obs.s = 55 + idx * 28;
+			obs.z = 55 + idx * 28;
 			obs.x = laneOffsets[idx % laneOffsets.length];
 			if (obs.type === 'moving') {
 				obs.speedX = (idx % 2 === 0 ? 1 : -1) * 5.5;
 			}
-			getSlopePosition(obs.x, obs.s, 0, this.tempPos);
-			obs.group.position.copy(this.tempPos);
+			obs.group.position.set(obs.x, 0, obs.z);
 		});
 
 		this.gems.forEach((gem, idx) => {
-			gem.s = 65 + idx * 36;
+			gem.z = 65 + idx * 36;
 			gem.x = laneOffsets[idx % laneOffsets.length];
 			gem.collected = false;
 			gem.mesh.visible = true;
-			getSlopePosition(gem.x, gem.s, 1.2, this.tempPos);
-			gem.mesh.position.copy(this.tempPos);
+			gem.mesh.position.set(gem.x, 1.2, gem.z);
 		});
 	}
 }

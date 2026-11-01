@@ -1,27 +1,22 @@
 import * as THREE from 'three';
-import {
-	SLOPE_ANGLE,
-	TRACK_WIDTH,
-	getSlopePosition
-} from './SlopeMath.ts';
+import { TRACK_WIDTH } from './SlopeMath.ts';
 
 export const SEGMENT_LENGTH = 60;
-export const TOTAL_SEGMENTS = 7; // 7 * 60 = 420m of continuous visible track
+export const TOTAL_SEGMENTS = 7; // 7 * 60 = 420m of continuous visible road
 
 interface TrackSegment {
-	s: number; // start distance along slope
+	z: number;
 	group: THREE.Group;
 }
 
 export class Track {
 	public group: THREE.Group;
 	private segments: TrackSegment[] = [];
-	private tempPos = new THREE.Vector3();
 
 	constructor() {
 		this.group = new THREE.Group();
 
-		// Shared Geometries & Materials for efficiency
+		// Shared Geometries & Materials
 		const roadGeo = new THREE.BoxGeometry(TRACK_WIDTH, 0.4, SEGMENT_LENGTH);
 		const railGeo = new THREE.BoxGeometry(0.35, 0.9, SEGMENT_LENGTH);
 		const centerLineGeo = new THREE.BoxGeometry(0.2, 0.04, SEGMENT_LENGTH);
@@ -59,59 +54,50 @@ export class Track {
 
 		for (let i = 0; i < TOTAL_SEGMENTS; i++) {
 			const segGroup = new THREE.Group();
-			// Tilt entire segment group by slope angle so surface is flush with the slope
-			segGroup.rotation.x = -SLOPE_ANGLE;
 
-			// Road slab: top surface is at y = 0
+			// Road slab: top surface is flush at y = 0
 			const roadMesh = new THREE.Mesh(roadGeo, i % 2 === 0 ? darkRoadMat : lightRoadMat);
 			roadMesh.position.y = -0.2;
 			segGroup.add(roadMesh);
 
 			// Left glowing guard rail
 			const leftRail = new THREE.Mesh(railGeo, leftRailMat);
-			leftRail.position.set(-TRACK_WIDTH / 2, 0.3, 0);
+			leftRail.position.set(-TRACK_WIDTH / 2, 0.35, 0);
 			segGroup.add(leftRail);
 
 			// Right glowing guard rail
 			const rightRail = new THREE.Mesh(railGeo, rightRailMat);
-			rightRail.position.set(TRACK_WIDTH / 2, 0.3, 0);
+			rightRail.position.set(TRACK_WIDTH / 2, 0.35, 0);
 			segGroup.add(rightRail);
 
 			// Glowing center lane stripe
 			const centerLine = new THREE.Mesh(centerLineGeo, centerLineMat);
-			centerLine.position.set(0, 0.02, 0);
+			centerLine.position.set(0, 0.01, 0);
 			segGroup.add(centerLine);
 
-			const startS = i * SEGMENT_LENGTH;
-			this.positionSegment(segGroup, startS);
+			const startZ = i * SEGMENT_LENGTH;
+			segGroup.position.set(0, 0, startZ + SEGMENT_LENGTH / 2);
 
 			this.group.add(segGroup);
-			this.segments.push({ s: startS, group: segGroup });
+			this.segments.push({ z: startZ, group: segGroup });
 		}
 	}
 
-	private positionSegment(segGroup: THREE.Group, startS: number): void {
-		const centerS = startS + SEGMENT_LENGTH / 2;
-		// Position at slope surface (h = 0)
-		getSlopePosition(0, centerS, 0, this.tempPos);
-		segGroup.position.copy(this.tempPos);
-	}
-
-	update(playerS: number): void {
-		// Recycle segments behind the player
+	update(playerZ: number): void {
+		// Leapfrog segments behind the player to the front
 		for (const seg of this.segments) {
-			if (seg.s + SEGMENT_LENGTH < playerS - 15) {
-				const maxS = Math.max(...this.segments.map((s) => s.s));
-				seg.s = maxS + SEGMENT_LENGTH;
-				this.positionSegment(seg.group, seg.s);
+			if (seg.z + SEGMENT_LENGTH < playerZ - 15) {
+				const maxZ = Math.max(...this.segments.map((s) => s.z));
+				seg.z = maxZ + SEGMENT_LENGTH;
+				seg.group.position.z = seg.z + SEGMENT_LENGTH / 2;
 			}
 		}
 	}
 
 	reset(): void {
 		for (let i = 0; i < this.segments.length; i++) {
-			this.segments[i].s = i * SEGMENT_LENGTH;
-			this.positionSegment(this.segments[i].group, this.segments[i].s);
+			this.segments[i].z = i * SEGMENT_LENGTH;
+			this.segments[i].group.position.set(0, 0, this.segments[i].z + SEGMENT_LENGTH / 2);
 		}
 	}
 }
