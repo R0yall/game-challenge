@@ -16,25 +16,28 @@ class GameStore {
 	speed = $state<number>(BASE_SPEED);
 	gems = $state<number>(0);
 	isMuted = $state<boolean>(false);
+	resetCount = $state<number>(0);
 
 	// Player position & physics
-	playerX = $state<number>(0);
-	playerY = $state<number>(PLAYER_RADIUS);
-	playerZ = $state<number>(0);
-	playerVy = $state<number>(0);
-	isGrounded = $state<boolean>(true);
-	rollAngle = $state<number>(0);
+	playerX = 0;
+	playerY = PLAYER_RADIUS;
+	playerZ = 0;
+	playerVy = 0;
+	isGrounded = true;
+	rollAngle = 0;
 
 	// Control states
-	moveLeft = $state<boolean>(false);
-	moveRight = $state<boolean>(false);
+	moveLeft = false;
+	moveRight = false;
 
 	constructor() {
 		if (typeof window !== 'undefined') {
-			const savedBest = localStorage.getItem('viberunner_highscore');
-			if (savedBest) {
-				this.highScore = parseInt(savedBest, 10) || 0;
-			}
+			try {
+				const savedBest = localStorage.getItem('viberunner_highscore');
+				if (savedBest) {
+					this.highScore = parseInt(savedBest, 10) || 0;
+				}
+			} catch {}
 			this.isMuted = sounds.isSoundMuted;
 		}
 	}
@@ -92,7 +95,9 @@ class GameStore {
 		if (this.score > this.highScore) {
 			this.highScore = Math.floor(this.score);
 			if (typeof window !== 'undefined') {
-				localStorage.setItem('viberunner_highscore', String(this.highScore));
+				try {
+					localStorage.setItem('viberunner_highscore', String(this.highScore));
+				} catch {}
 			}
 		}
 	}
@@ -110,6 +115,7 @@ class GameStore {
 		this.rollAngle = 0;
 		this.moveLeft = false;
 		this.moveRight = false;
+		this.resetCount += 1;
 	}
 }
 
