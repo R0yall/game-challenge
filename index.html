@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+		<title>CyberSlope 3D — AI Vibecoding Challenge</title>
+		<meta name="description" content="Infinite 3D Downhill Runner built with pure Three.js & Vite for the AI Vibecoding Challenge." />
+		<link rel="stylesheet" href="/style.css" />
+	</head>
+	<body>
+		<!-- 3D Canvas -->
+		<canvas id="game-canvas"></canvas>
+
+		<!-- In-Game HUD -->
+		<div id="hud" class="overlay-layer hidden">
+			<header class="top-bar">
+				<div class="stats-group">
+					<div class="stat-card score-card">
+						<span class="label">SCORE</span>
+						<span id="hud-score" class="value score-val">0</span>
+					</div>
+					<div class="stat-card">
+						<span class="label">BEST</span>
+						<span id="hud-best" class="value">0</span>
+					</div>
+					<div class="stat-card">
+						<span class="label">DISTANCE</span>
+						<span id="hud-dist" class="value">0m</span>
+					</div>
+					<div class="stat-card gem-card">
+						<span class="gem-icon">💎</span>
+						<span id="hud-gems" class="value gem-val">0</span>
+					</div>
+				</div>
+
+				<div class="actions-group">
+					<button id="btn-sound" class="icon-btn" title="Toggle Sound" aria-label="Toggle Sound">🔊</button>
+					<button id="btn-pause" class="icon-btn" title="Pause Game (ESC)" aria-label="Pause Game">
+						⏸ <span class="shortcut">ESC</span>
+					</button>
+				</div>
+			</header>
+
+			<div class="speed-indicator">
+				<div id="hud-speed-label" class="speed-label">SPEED 65 km/h</div>
+				<div class="speed-track">
+					<div id="hud-speed-fill" class="speed-fill" style="width: 10%"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Mobile / Touch Controls -->
+		<div id="mobile-controls" class="touch-controls hidden">
+			<div class="steer-buttons">
+				<button id="btn-touch-left" class="touch-btn steer-btn" aria-label="Steer Left">◀</button>
+				<button id="btn-touch-right" class="touch-btn steer-btn" aria-label="Steer Right">▶</button>
+			</div>
+			<button id="btn-touch-jump" class="touch-btn jump-btn" aria-label="Jump">▲ JUMP</button>
+		</div>
+
+		<!-- Start Screen Overlay -->
+		<div id="start-screen" class="modal-overlay">
+			<div class="card">
+				<div class="badge">AI VIBECODING CHALLENGE</div>
+				<h1 class="game-title">CYBER<span class="highlight">SLOPE</span></h1>
+				<p class="tagline">Glide down the infinite neon abyss. Dodge blocks, jump barriers, survive.</p>
+
+				<div class="instructions">
+					<div class="inst-item">
+						<div class="key-badge">⬅️ ➡️ or A / D</div>
+						<span>Steer Ball</span>
+					</div>
+					<div class="inst-item">
+						<div class="key-badge">SPACE or ⬆️</div>
+						<span>Jump Barrier</span>
+					</div>
+					<div class="inst-item">
+						<div class="key-badge">ESC</div>
+						<span>Pause Menu</span>
+					</div>
+				</div>
+
+				<button id="btn-start" class="btn-main">
+					<span class="btn-text">START RUN</span>
+					<span class="btn-subtext">PRESS SPACE OR CLICK</span>
+				</button>
+
+				<div id="start-best-container" class="high-score-banner hidden">
+					🏆 Current Best: <strong id="start-best">0</strong>
+				</div>
+			</div>
+		</div>
+
+		<!-- Pause Menu Overlay -->
+		<div id="pause-menu" class="modal-overlay hidden">
+			<div class="card">
+				<div class="badge">GAME PAUSED</div>
+				<h2>PAUSE MENU</h2>
+
+				<div class="stats-preview">
+					<div class="preview-item">
+						<span class="p-label">Score</span>
+						<span id="pause-score" class="p-val">0</span>
+					</div>
+					<div class="preview-item">
+						<span class="p-label">Distance</span>
+						<span id="pause-dist" class="p-val">0m</span>
+					</div>
+					<div class="preview-item">
+						<span class="p-label">Gems</span>
+						<span id="pause-gems" class="p-val">💎 0</span>
+					</div>
+				</div>
+
+				<div class="button-group">
+					<button id="btn-resume" class="btn-primary">▶ RESUME GAME <span class="key-hint">ESC</span></button>
+					<button id="btn-pause-restart" class="btn-secondary">🔄 RESTART <span class="key-hint">R</span></button>
+					<button id="btn-pause-sound" class="btn-subtle">🔊 Sound Settings</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Game Over Overlay -->
+		<div id="game-over-modal" class="modal-overlay hidden">
+			<div class="card game-over-card">
+				<div id="game-over-badge" class="badge crashed">💥 CRASHED!</div>
+				<h2>GAME OVER</h2>
+
+				<div class="score-showcase">
+					<span class="score-label">FINAL SCORE</span>
+					<span id="go-score" class="score-number">0</span>
+				</div>
+
+				<div class="details-grid">
+					<div class="detail-box">
+						<span class="d-label">BEST</span>
+						<span id="go-best" class="d-val">0</span>
+					</div>
+					<div class="detail-box">
+						<span class="d-label">DISTANCE</span>
+						<span id="go-dist" class="d-val">0m</span>
+					</div>
+					<div class="detail-box">
+						<span class="d-label">GEMS</span>
+						<span id="go-gems" class="d-val">💎 0</span>
+					</div>
+					<div class="detail-box">
+						<span class="d-label">TOP SPEED</span>
+						<span id="go-speed" class="d-val">0 km/h</span>
+					</div>
+				</div>
+
+				<button id="btn-restart" class="btn-restart">
+					PLAY AGAIN <span class="hint">SPACE / CLICK / R</span>
+				</button>
+			</div>
+		</div>
+
+		<script type="module" src="/src/main.ts"></script>
+	</body>
+</html>

@@ -1,0 +1,192 @@
+import { Game, type GameState } from './game/Game.ts';
+
+// Get DOM Elements
+const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+const hud = document.getElementById('hud') as HTMLElement;
+const startScreen = document.getElementById('start-screen') as HTMLElement;
+const pauseMenu = document.getElementById('pause-menu') as HTMLElement;
+const gameOverModal = document.getElementById('game-over-modal') as HTMLElement;
+const mobileControls = document.getElementById('mobile-controls') as HTMLElement;
+
+// HUD Elements
+const hudScore = document.getElementById('hud-score') as HTMLElement;
+const hudBest = document.getElementById('hud-best') as HTMLElement;
+const hudDist = document.getElementById('hud-dist') as HTMLElement;
+const hudGems = document.getElementById('hud-gems') as HTMLElement;
+const hudSpeedLabel = document.getElementById('hud-speed-label') as HTMLElement;
+const hudSpeedFill = document.getElementById('hud-speed-fill') as HTMLElement;
+const btnSound = document.getElementById('btn-sound') as HTMLButtonElement;
+const btnPause = document.getElementById('btn-pause') as HTMLButtonElement;
+
+// Start Elements
+const btnStart = document.getElementById('btn-start') as HTMLButtonElement;
+const startBestContainer = document.getElementById('start-best-container') as HTMLElement;
+const startBest = document.getElementById('start-best') as HTMLElement;
+
+// Pause Elements
+const pauseScore = document.getElementById('pause-score') as HTMLElement;
+const pauseDist = document.getElementById('pause-dist') as HTMLElement;
+const pauseGems = document.getElementById('pause-gems') as HTMLElement;
+const btnResume = document.getElementById('btn-resume') as HTMLButtonElement;
+const btnPauseRestart = document.getElementById('btn-pause-restart') as HTMLButtonElement;
+const btnPauseSound = document.getElementById('btn-pause-sound') as HTMLButtonElement;
+
+// Game Over Elements
+const gameOverBadge = document.getElementById('game-over-badge') as HTMLElement;
+const goScore = document.getElementById('go-score') as HTMLElement;
+const goBest = document.getElementById('go-best') as HTMLElement;
+const goDist = document.getElementById('go-dist') as HTMLElement;
+const goGems = document.getElementById('go-gems') as HTMLElement;
+const goSpeed = document.getElementById('go-speed') as HTMLElement;
+const btnRestart = document.getElementById('btn-restart') as HTMLButtonElement;
+
+// Touch Elements
+const btnTouchLeft = document.getElementById('btn-touch-left') as HTMLButtonElement;
+const btnTouchRight = document.getElementById('btn-touch-right') as HTMLButtonElement;
+const btnTouchJump = document.getElementById('btn-touch-jump') as HTMLButtonElement;
+
+// Initialize Game
+const game = new Game(canvas);
+
+// Hook UI to Game State
+game.setUIListener({
+	onScoreUpdate: (score, distance, speed, gems) => {
+		hudScore.innerText = String(Math.floor(score));
+		hudDist.innerText = `${Math.floor(distance)}m`;
+		hudGems.innerText = String(gems);
+		hudSpeedLabel.innerText = `SPEED ${Math.floor(speed * 2.5)} km/h`;
+		const speedPct = Math.min(100, Math.max(0, ((speed - 26) / (60 - 26)) * 100));
+		hudSpeedFill.style.width = `${speedPct}%`;
+	},
+	onStateChange: (state: GameState, score: number, highScore: number, isNewBest: boolean) => {
+		hudBest.innerText = String(highScore);
+
+		// Hide all overlays first
+		startScreen.classList.add('hidden');
+		pauseMenu.classList.add('hidden');
+		gameOverModal.classList.add('hidden');
+		hud.classList.add('hidden');
+		mobileControls.classList.add('hidden');
+
+		if (state === 'idle') {
+			startScreen.classList.remove('hidden');
+			if (highScore > 0) {
+				startBestContainer.classList.remove('hidden');
+				startBest.innerText = String(highScore);
+			}
+		} else if (state === 'playing') {
+			hud.classList.remove('hidden');
+			mobileControls.classList.remove('hidden');
+		} else if (state === 'paused') {
+			hud.classList.remove('hidden');
+			pauseMenu.classList.remove('hidden');
+			pauseScore.innerText = String(Math.floor(score));
+			pauseDist.innerText = `${Math.floor(game.distance)}m`;
+			pauseGems.innerText = `💎 ${game.gems}`;
+		} else if (state === 'gameover') {
+			gameOverModal.classList.remove('hidden');
+			goScore.innerText = String(Math.floor(score));
+			goBest.innerText = String(highScore);
+			goDist.innerText = `${Math.floor(game.distance)}m`;
+			goGems.innerText = `💎 ${game.gems}`;
+			goSpeed.innerText = `${Math.floor(game.speed * 2.5)} km/h`;
+
+			if (isNewBest) {
+				gameOverBadge.className = 'badge new-best';
+				gameOverBadge.innerText = '🏆 NEW HIGH SCORE!';
+			} else {
+				gameOverBadge.className = 'badge crashed';
+				gameOverBadge.innerText = '💥 CRASHED!';
+			}
+		}
+	},
+	onSoundToggle: (isMuted: boolean) => {
+		const label = isMuted ? '🔇' : '🔊';
+		btnSound.innerText = label;
+		btnPauseSound.innerText = isMuted ? '🔇 Unmute Audio' : '🔊 Mute Audio';
+	}
+});
+
+// Button Click Bindings
+btnStart.addEventListener('click', () => game.start());
+btnPause.addEventListener('click', () => game.togglePause());
+btnResume.addEventListener('click', () => game.resume());
+btnPauseRestart.addEventListener('click', () => game.start());
+btnRestart.addEventListener('click', () => game.start());
+
+btnSound.addEventListener('click', () => game.toggleSound());
+btnPauseSound.addEventListener('click', () => game.toggleSound());
+
+// Touch Controls
+function bindTouch(btn: HTMLElement, onStart: () => void, onEnd: () => void) {
+	btn.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(); }, { passive: false });
+	btn.addEventListener('touchend', (e) => { e.preventDefault(); onEnd(); }, { passive: false });
+	btn.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(); });
+	btn.addEventListener('mouseup', (e) => { e.preventDefault(); onEnd(); });
+}
+
+bindTouch(btnTouchLeft, () => { game.player.moveLeft = true; }, () => { game.player.moveLeft = false; });
+bindTouch(btnTouchRight, () => { game.player.moveRight = true; }, () => { game.player.moveRight = false; });
+btnTouchJump.addEventListener('touchstart', (e) => { e.preventDefault(); game.player.triggerJump(); }, { passive: false });
+btnTouchJump.addEventListener('mousedown', (e) => { e.preventDefault(); game.player.triggerJump(); });
+
+// Global Keyboard Events
+window.addEventListener('keydown', (e: KeyboardEvent) => {
+	if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+		e.preventDefault();
+	}
+
+	if (e.code === 'Escape') {
+		game.togglePause();
+		return;
+	}
+
+	if (game.state === 'idle') {
+		if (e.code === 'Space' || e.code === 'Enter') {
+			game.start();
+		}
+		return;
+	}
+
+	if (game.state === 'gameover') {
+		if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyR') {
+			game.start();
+		}
+		return;
+	}
+
+	if (game.state === 'paused') {
+		if (e.code === 'KeyR') {
+			game.start();
+		}
+		return;
+	}
+
+	if (game.state === 'playing') {
+		if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+			game.player.moveLeft = true;
+		}
+		if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+			game.player.moveRight = true;
+		}
+		if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+			game.player.triggerJump();
+		}
+	}
+});
+
+window.addEventListener('keyup', (e: KeyboardEvent) => {
+	if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+		game.player.moveLeft = false;
+	}
+	if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+		game.player.moveRight = false;
+	}
+});
+
+// Auto-pause if tab loses focus
+window.addEventListener('blur', () => {
+	if (game.state === 'playing') {
+		game.pause();
+	}
+});

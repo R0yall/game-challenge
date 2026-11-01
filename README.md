@@ -1,6 +1,6 @@
 # 🎮 CyberSlope 3D — AI Vibecoding Challenge
 
-An infinite 3D runner game built with **SvelteKit**, **Svelte 5 (Runes)**, **Threlte v8**, and **Three.js**.
+An infinite 3D runner game built with **Pure Three.js** and **Vite (TypeScript)**.
 
 Glide down a glowing neon downhill slope into infinity. Dodge monolithic pillars, jump over laser barriers, avoid moving hazards, and collect diamonds while your speed intensifies.
 
@@ -14,7 +14,7 @@ This repository is built for an AI Vibecoding Challenge between 2 developers:
 2. **No Prior Consultation:** Do not coordinate features in advance — let the AI surprise both players!
 3. **Pure Vibecoding:** Formulate a creative prompt for your AI coding assistant to implement the next feature, twist, obstacle, visual effect, or game mechanic.
 4. **Log Your Turn:** Update the **Turn Log** below with your name/handle, the feature added, and your prompt/concept.
-5. **Keep It Playable:** Every turn must compile cleanly (`npm run check` and `npm run build`) and remain fun to play.
+5. **Keep It Playable:** Every turn must compile cleanly (`npm run build`) and remain smooth and fun to play.
 
 ---
 
@@ -22,7 +22,7 @@ This repository is built for an AI Vibecoding Challenge between 2 developers:
 
 | Turn | Developer | Feature / Additions | Notes |
 |:---:|:---|:---|:---|
-| **0** | Base Setup | **Foundational Infinite Runner:** 3D downhill slope, rolling ball with jump physics, procedural hurdles, pillars & moving obstacles, gem pickups, Web Audio SFX, HUD, ESC pause menu, game over & restart, high score in localStorage, responsive & touch controls. | Initial release ready for Turn 1! |
+| **0** | Base Setup | **Clean Pure Three.js + Vite Engine:** Mathematically seamless downhill slope, rolling cyber ball with jump & roll physics, procedural hurdles, pillars & moving obstacles, gem pickups, Web Audio SFX, HUD, ESC pause menu, game over & restart, high score in localStorage, responsive & touch controls. | Initial release ready for Turn 1! |
 | **1** | *Next Dev* | *(Your new feature here)* | *(Vibecoded with AI)* |
 | **2** | *Next Dev* | *(Your new feature here)* | *(Vibecoded with AI)* |
 
@@ -55,10 +55,7 @@ npm install
 # 2. Run the development server
 npm run dev
 
-# 3. Check types & diagnostics
-npm run check
-
-# 4. Production build
+# 3. Production build
 npm run build
 npm run preview
 ```
@@ -69,28 +66,23 @@ Open [http://localhost:5173](http://localhost:5173) in your browser to play!
 
 ## 🏗️ Project Architecture
 
+Built with pure, modular Three.js — making it exceptionally clean and easy for any AI to expand:
+
 ```
-src/
-├── app.html                       # HTML shell & viewport settings
-├── routes/
-│   ├── +layout.svelte             # Root layout
-│   └── +page.svelte               # Game coordinator & keyboard listeners
-└── lib/
-    ├── types/
-    │   └── game.ts                # TypeScript types (obstacles, items, states)
-    ├── audio/
-    │   └── sound.ts               # Web Audio API procedural sound engine
-    ├── game/
-    │   └── gameStore.svelte.ts    # Svelte 5 reactive game state ($state)
-    └── components/
-        ├── GameCanvas.svelte      # Threlte Canvas wrapper
-        ├── Scene.svelte           # 3D world: slope, lighting, player, obstacles, camera
-        └── UI/
-            ├── HUD.svelte         # Score, distance, speed gauge, gem counter
-            ├── PauseMenu.svelte   # ESC pause overlay with stats & resume
-            ├── GameOverModal.svelte # Crash results, high score, instant restart
-            ├── StartScreen.svelte # Main title & controls guide
-            └── MobileControls.svelte # Touch buttons for mobile & tablet
+├── index.html              # HTML canvas & glassmorphism UI overlays
+├── style.css               # Cyber neon UI styling
+├── package.json            # Vite + Three.js + TypeScript
+├── tsconfig.json           # TypeScript configuration
+└── src/
+    ├── main.ts             # Entry point: binds inputs, UI events, starts game
+    └── game/
+        ├── SlopeMath.ts    # Downhill slope math & coordinate projection
+        ├── Player.ts       # Rolling sphere, steering & jump physics, shadow
+        ├── Track.ts        # Seamless downhill road segments & neon rails
+        ├── Obstacles.ts    # Jumpable hurdles, tall pillars, moving lasers, gems
+        ├── Starfield.ts    # Single-drawcall cosmic star particles
+        ├── Audio.ts        # Procedural retro SFX synthesizer (Web Audio API)
+        └── Game.ts         # Master game loop, camera tracking, collisions
 ```
 
 ---
