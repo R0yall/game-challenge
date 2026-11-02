@@ -1,4 +1,6 @@
+/// <reference types="vite/client" />
 import * as THREE from 'three';
+import sharedBest from '../data/highscore.json';
 import { Player } from './Player.ts';
 import { Track } from './Track.ts';
 import { ObstacleManager } from './Obstacles.ts';
@@ -21,7 +23,10 @@ export interface GameUIListener {
 export class Game {
 	public state: GameState = 'idle';
 	public score = 0;
-	public highScore = 0;
+	public highScore = sharedBest.score;
+	public highScoreName = sharedBest.name;
+	public playerName = '';
+	public scoreSaveFailed = false;
 	public distance = 0;
 	public speed = BASE_SPEED;
 	public gems = 0;
@@ -48,7 +53,11 @@ export class Game {
 	constructor(canvas: HTMLCanvasElement) {
 		try {
 			const saved = localStorage.getItem('viberunner_highscore');
-			if (saved) this.highScore = parseInt(saved, 10) || 0;
+			const localScore = Number.parseInt(saved || '0', 10) || 0;
+			if (localScore > this.highScore) {
+				this.highScore = localScore;
+				this.highScoreName = localStorage.getItem('viberunner_highscore_name') || 'Unknown';
+			}
 		} catch {}
 
 		// 1. Scene & Renderer
@@ -163,12 +172,19 @@ export class Game {
 		this.state = 'gameover';
 		sounds.playCrash();
 
-		const isNewBest = this.score > this.highScore && this.score > 0;
+		const isNewBest = Math.floor(this.score) > this.highScore;
 		if (isNewBest) {
 			this.highScore = Math.floor(this.score);
+			this.highScoreName = this.playerName;
 			try {
 				localStorage.setItem('viberunner_highscore', String(this.highScore));
+				localStorage.setItem('viberunner_highscore_name', this.highScoreName);
 			} catch {}
+			if (import.meta.env.DEV) {
+				fetch('/__highscore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: this.highScoreName, score: this.highScore }) })
+					.then(response => { if (!response.ok) throw new Error('Could not save score'); })
+					.catch(() => { this.scoreSaveFailed = true; if (this.state === 'gameover') this.uiListener?.onStateChange(this.state, this.score, this.highScore, true); });
+			}
 		}
 
 		if (this.uiListener) {

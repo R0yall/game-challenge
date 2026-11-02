@@ -19,6 +19,9 @@ const btnSound = document.getElementById('btn-sound') as HTMLButtonElement;
 const btnPause = document.getElementById('btn-pause') as HTMLButtonElement;
 
 // Start Elements
+const playerNameInput = document.getElementById('player-name') as HTMLInputElement;
+const nameError = document.getElementById('name-error') as HTMLElement;
+const scoreSaveError = document.getElementById('score-save-error') as HTMLElement;
 const btnStart = document.getElementById('btn-start') as HTMLButtonElement;
 const startBestContainer = document.getElementById('start-best-container') as HTMLElement;
 const startBest = document.getElementById('start-best') as HTMLElement;
@@ -72,7 +75,7 @@ game.setUIListener({
 			startScreen.classList.remove('hidden');
 			if (highScore > 0) {
 				startBestContainer.classList.remove('hidden');
-				startBest.innerText = String(highScore);
+				startBest.innerText = `${highScore} — ${game.highScoreName || 'Unknown'}`;
 			}
 		} else if (state === 'playing') {
 			hud.classList.remove('hidden');
@@ -86,7 +89,8 @@ game.setUIListener({
 		} else if (state === 'gameover') {
 			gameOverModal.classList.remove('hidden');
 			goScore.innerText = String(Math.floor(score));
-			goBest.innerText = String(highScore);
+			goBest.innerText = `${highScore} — ${game.highScoreName || 'Unknown'}`;
+			scoreSaveError.classList.toggle('hidden', !game.scoreSaveFailed);
 			goDist.innerText = `${Math.floor(game.distance)}m`;
 			goGems.innerText = `💎 ${game.gems}`;
 			goSpeed.innerText = `${Math.floor(game.speed * 2.5)} km/h`;
@@ -108,7 +112,19 @@ game.setUIListener({
 });
 
 // Button Click Bindings
-btnStart.addEventListener('click', () => game.start());
+function startFirstRun(): void {
+	const name = playerNameInput.value.trim();
+	if (!name) {
+		nameError.classList.remove('hidden');
+		playerNameInput.focus();
+		return;
+	}
+	nameError.classList.add('hidden');
+	game.playerName = name;
+	game.start();
+}
+playerNameInput.addEventListener('input', () => nameError.classList.add('hidden'));
+btnStart.addEventListener('click', startFirstRun);
 btnPause.addEventListener('click', () => game.togglePause());
 btnResume.addEventListener('click', () => game.resume());
 btnPauseRestart.addEventListener('click', () => game.start());
@@ -132,6 +148,10 @@ btnTouchJump.addEventListener('mousedown', (e) => { e.preventDefault(); game.pla
 
 // Global Keyboard Events
 window.addEventListener('keydown', (e: KeyboardEvent) => {
+	if (e.target === playerNameInput) {
+		if (e.code === 'Enter') { e.preventDefault(); startFirstRun(); }
+		return;
+	}
 	if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
 		e.preventDefault();
 	}
@@ -143,7 +163,7 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
 
 	if (game.state === 'idle') {
 		if (e.code === 'Space' || e.code === 'Enter') {
-			game.start();
+			startFirstRun();
 		}
 		return;
 	}

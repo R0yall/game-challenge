@@ -81,9 +81,13 @@
 					</div>
 				</div>
 
+				<label class="player-name-label" for="player-name">PLAYER NAME</label>
+				<input id="player-name" class="player-name-input" type="text" maxlength="24" autocomplete="nickname" placeholder="Enter your name" required />
+				<p id="name-error" class="name-error hidden" role="alert">Enter your name to start.</p>
+
 				<button id="btn-start" class="btn-main">
 					<span class="btn-text">START RUN</span>
-					<span class="btn-subtext">PRESS SPACE OR CLICK</span>
+					<span class="btn-subtext">PRESS ENTER OR CLICK</span>
 				</button>
 
 				<div id="start-best-container" class="high-score-banner hidden">
@@ -150,6 +154,8 @@
 						<span id="go-speed" class="d-val">0 km/h</span>
 					</div>
 				</div>
+
+				<p id="score-save-error" class="name-error hidden" role="status">Score saved in this browser, but not to the project file. Play on localhost with npm run dev to update it.</p>
 
 				<button id="btn-restart" class="btn-restart">
 					PLAY AGAIN <span class="hint">SPACE / CLICK / R</span>
