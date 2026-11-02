@@ -63,11 +63,14 @@ npm run preview
 
 Open [http://localhost:5173](http://localhost:5173) in your browser to play!
 
-### Sharing the high score
+### 🏆 Cloud High Score Leaderboard
 
-Enter your name before starting. Every completed run while playing at `localhost` with `npm run dev` is considered for the top 20 in `src/data/highscore.json`. Open the leaderboard from the start or game-over screen. Commit and push that file with your changes to share the record; other developers receive it when they pull. It does not push automatically.
+High scores are automatically synchronized in real-time across all players via **Dreamlo**!
 
-Scores also stay in the current browser's local storage. The production build and games opened through a network address cannot write the project file, so their scores remain local to that browser. To share a score, play from localhost in the development server. Existing unnamed browser records appear as “Unknown”.
+- Enter your nickname before starting. Every completed run automatically uploads to the global leaderboard.
+- Click **🏆 TOP 20 SCORES** on the start or game-over screen to view live rankings.
+- No git commits, pull requests, or merge conflicts on `highscore.json` are needed — records sync live over the air.
+- If offline, scores are safely preserved in browser local storage and sync once reconnected.
 
 
 ---
