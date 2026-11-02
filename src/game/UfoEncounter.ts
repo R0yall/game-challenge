@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HALF_TRACK } from './SlopeMath.ts';
+import { Course } from './Course.ts';
 import { sounds } from './Audio.ts';
 
 interface Bomb {
@@ -47,6 +48,21 @@ export class UfoEncounter {
 	// Bombs
 	private bombs: Bomb[] = [];
 	private bombGroup: THREE.Group;
+ private course?: Course;
+ private visualTransforms: { object: THREE.Object3D; position: THREE.Vector3; rotation: THREE.Quaternion }[] = [];
+ private restoreCourseTransforms(): void {
+  for (const entry of this.visualTransforms) { entry.object.position.copy(entry.position); entry.object.quaternion.copy(entry.rotation); }
+  this.visualTransforms = [];
+ }
+ private applyCourseTransforms(): void {
+  if (!this.course) return;
+  for (const object of [this.ufoBody, ...this.bombGroup.children]) {
+   const position = object.position.clone(), rotation = object.quaternion.clone();
+   this.visualTransforms.push({ object, position, rotation });
+   this.course.place(object, position.z, position.x, position.y);
+   object.quaternion.multiply(rotation);
+  }
+ }
 
 	constructor(onAlert?: (active: boolean) => void) {
 		this.alertCallback = onAlert;
@@ -193,7 +209,9 @@ export class UfoEncounter {
 		return head;
 	}
 
-	update(dt: number, playerZ: number, playerX: number, playerSpeed: number): void {
+	update(dt: number, playerZ: number, playerX: number, playerSpeed: number, course?: Course): void {
+  this.restoreCourseTransforms();
+  this.course = course;
 		this.swayTime += dt;
 
 		// Pulse rim lights
@@ -229,6 +247,7 @@ export class UfoEncounter {
 				this.updateDeparting(dt, playerZ);
 				break;
 		}
+  this.applyCourseTransforms();
 	}
 
 	private startEncounter(playerZ: number): void {
@@ -367,6 +386,7 @@ export class UfoEncounter {
 	}
 
 	private dropBomb(): void {
+  if (this.course && (this.course.sample(this.ufoZ).density === 0 || this.course.sample(this.ufoZ - this.followDist).protected)) return;
 		sounds.playUfoDrop();
 
 		// Create Low-Poly Spiked Cyber Bomb
@@ -548,6 +568,7 @@ export class UfoEncounter {
 	}
 
 	reset(): void {
+  this.restoreCourseTransforms();
 		this.state = 'dormant';
 		this.nextTriggerDistance = 160;
 		this.encounterTimer = 0;

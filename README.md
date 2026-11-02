@@ -25,7 +25,7 @@ This repository is built for an AI Vibecoding Challenge between 2 developers:
 | **0** | Base Setup | **Clean Pure Three.js + Vite Engine:** Mathematically seamless downhill slope, rolling cyber ball with jump & roll physics, procedural hurdles, pillars & moving obstacles, gem pickups, Web Audio SFX, HUD, ESC pause menu, game over & restart, high score in localStorage, responsive & touch controls. | Initial release ready for Turn 1! |
 | **1** | Nytro | **Top 20 Leaderboard & Rainbow Cat Invincibility:** Named high scores saved to shared JSON, Top 20 leaderboard modal, rainbow cat player model with rainbow trail, invincibility power-up gems with speed streaks and custom synth chime. | Turn 1 additions |
 | **2** | Royall | **3D UFO Hazard Encounter & Dreamlo Cloud Highscores:** Adds a dynamic 3D UFO encounter that pursues the player down the slope and drops dodgeable cyber-bombs with road impact shockwaves. Migrated leaderboard to Dreamlo for automatic real-time cloud score syncing across players, and added local player name persistence. | Turn 2 additions |
-| **3** | *Next Dev* | *(Your new feature here)* | *(Vibecoded with AI)* |
+| **3** | Nytro | **Randomized Stunt Course:** Left/right offset vertical loops (50/50), corkscrews, automatic ramp jumps across gaps, banked bends, smooth steering, and empty / sparse / dense obstacle sections. Track, pickups, player and chase camera follow the same generated course. | Clear stunt approaches and landings; UFO hazards suppressed around stunts. |
 
 ---
 
@@ -40,6 +40,12 @@ This repository is built for an AI Vibecoding Challenge between 2 developers:
 | **Mute / Unmute** | Click Sound icon | Sound icon (top right) |
 
 ---
+
+Each run generates a fresh course, with new sections added continuously ahead. Keep steering through banked bends and loops; ramp jumps launch and land automatically. Manual jumps remain available on ordinary road sections. Loops and ramp sections contain no obstacles.
+
+Use `http://localhost:5173/?test=1` for practice with local and online score saving disabled. The default camera FOV is 75°.
+
+Course generation checks: `node tests/course.mjs`.
 
 ## 🚀 Getting Started
 
