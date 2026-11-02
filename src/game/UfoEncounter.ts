@@ -4,6 +4,7 @@ import { sounds } from './Audio.ts';
 
 interface Bomb {
 	mesh: THREE.Group;
+	targetDecal?: THREE.Mesh;
 	x: number;
 	z: number;
 	y: number; // height above road
@@ -31,10 +32,10 @@ export class UfoEncounter {
 	private alertCallback?: (active: boolean) => void;
 
 	// Dynamic distance & altitude variation
-	private followDist = 10.0;
-	private targetFollowDist = 10.0;
-	private followHeight = 3.4;
-	private targetFollowHeight = 3.4;
+	private followDist = 20.0;
+	private targetFollowDist = 20.0;
+	private followHeight = 4.5;
+	private targetFollowHeight = 4.5;
 	private postureTimer = 2.5;
 
 	// Movement
@@ -236,10 +237,10 @@ export class UfoEncounter {
 		this.bombsDropped = 0;
 		this.bombTimer = 1.2;
 		this.encounterTimer = 0;
-		this.followDist = 12.0;
-		this.targetFollowDist = 9.5;
-		this.followHeight = 4.2;
-		this.targetFollowHeight = 3.2;
+		this.followDist = 24.0;
+		this.targetFollowDist = 20.0;
+		this.followHeight = 5.5;
+		this.targetFollowHeight = 4.4;
 		this.postureTimer = 3.0;
 
 		// Spawn high up in the sky ahead of the player
@@ -278,28 +279,28 @@ export class UfoEncounter {
 		// Dynamically switch distance between close-up taunts, mid-range chase, and distant high scouting
 		if (this.postureTimer <= 0) {
 			const roll = Math.random();
-			if (roll < 0.42) {
-				// Close up: menacing, in your face right over the bal/cat
-				this.targetFollowDist = 8.5 + Math.random() * 2.5; // 8.5m - 11.0m
-				this.targetFollowHeight = 2.9 + Math.random() * 0.8; // 2.9m - 3.7m
-				this.postureTimer = 2.6 + Math.random() * 2.2;
-			} else if (roll < 0.76) {
-				// Mid-range cruise: scouting and swaying
-				this.targetFollowDist = 14.0 + Math.random() * 4.5; // 14m - 18.5m
-				this.targetFollowHeight = 4.5 + Math.random() * 1.5; // 4.5m - 6.0m
-				this.postureTimer = 2.4 + Math.random() * 2.0;
+			if (roll < 0.45) {
+				// Close encounter: clear view, comfortable reaction time (~18m - 22m ahead)
+				this.targetFollowDist = 18.0 + Math.random() * 4.0;
+				this.targetFollowHeight = 4.2 + Math.random() * 0.8;
+				this.postureTimer = 3.0 + Math.random() * 2.0;
+			} else if (roll < 0.78) {
+				// Mid-range cruise: scouting and swaying (~27m - 34m ahead)
+				this.targetFollowDist = 27.0 + Math.random() * 7.0;
+				this.targetFollowHeight = 5.8 + Math.random() * 1.5;
+				this.postureTimer = 2.6 + Math.random() * 2.0;
 			} else {
-				// Distant high orbit: pulls far ahead into space
-				this.targetFollowDist = 24.0 + Math.random() * 7.0; // 24m - 31m
-				this.targetFollowHeight = 7.5 + Math.random() * 3.5; // 7.5m - 11.0m
-				this.postureTimer = 2.0 + Math.random() * 1.8;
+				// Distant high orbit: pulls far ahead into space (~40m - 50m ahead)
+				this.targetFollowDist = 40.0 + Math.random() * 10.0;
+				this.targetFollowHeight = 8.5 + Math.random() * 3.5;
+				this.postureTimer = 2.2 + Math.random() * 1.8;
 			}
 		}
 
 		// Before dropping a bomb, if far away, swoop back in close!
-		if (this.bombTimer < 1.0 && this.targetFollowDist > 14) {
-			this.targetFollowDist = 9.0 + Math.random() * 2.0;
-			this.targetFollowHeight = 3.2 + Math.random() * 0.6;
+		if (this.bombTimer < 1.2 && this.targetFollowDist > 25) {
+			this.targetFollowDist = 19.0 + Math.random() * 3.0;
+			this.targetFollowHeight = 4.3 + Math.random() * 0.7;
 		}
 
 		// Smoothly lerp towards target follow distance & altitude
@@ -332,13 +333,13 @@ export class UfoEncounter {
 		if (this.bombTimer <= 0 && this.bombsDropped < this.maxBombs) {
 			this.dropBomb();
 			this.bombsDropped++;
-			this.bombTimer = 2.8 + Math.random() * 0.8;
+			this.bombTimer = 3.2 + Math.random() * 1.2;
 
-			// 50% chance to pull away further right after dropping a bomb
+			// 55% chance to pull away further right after dropping a bomb
 			if (Math.random() < 0.55) {
-				this.targetFollowDist = 18.0 + Math.random() * 8.0;
-				this.targetFollowHeight = 6.0 + Math.random() * 2.5;
-				this.postureTimer = 2.4 + Math.random() * 1.5;
+				this.targetFollowDist = 28.0 + Math.random() * 8.0;
+				this.targetFollowHeight = 6.5 + Math.random() * 2.5;
+				this.postureTimer = 2.6 + Math.random() * 1.5;
 			}
 		}
 
@@ -418,8 +419,22 @@ export class UfoEncounter {
 		bombGroup.position.set(dropX, dropY, dropZ);
 		this.bombGroup.add(bombGroup);
 
+		// Ground hazard targeting warning reticle on road surface
+		const reticleGeo = new THREE.RingGeometry(0.45, 0.75, 24);
+		const reticleMat = new THREE.MeshBasicMaterial({
+			color: 0xff1744,
+			transparent: true,
+			opacity: 0.8,
+			side: THREE.DoubleSide
+		});
+		const reticle = new THREE.Mesh(reticleGeo, reticleMat);
+		reticle.rotation.x = -Math.PI / 2;
+		reticle.position.set(dropX, 0.02, dropZ);
+		this.bombGroup.add(reticle);
+
 		this.bombs.push({
 			mesh: bombGroup,
+			targetDecal: reticle,
 			x: dropX,
 			z: dropZ,
 			y: dropY,
@@ -443,10 +458,22 @@ export class UfoEncounter {
 				b.mesh.rotation.y += dt * 6;
 
 				// Impact with road surface (y = 0.55)
+				// Pulse targeting decal while bomb is falling
+				if (b.targetDecal) {
+					const pulse = 0.65 + Math.sin(this.swayTime * 16) * 0.3;
+					(b.targetDecal.material as THREE.MeshBasicMaterial).opacity = pulse;
+				}
+
 				if (b.y <= 0.55) {
 					b.y = 0.55;
 					b.falling = false;
 					sounds.playBombExplode();
+
+					// Remove warning reticle
+					if (b.targetDecal) {
+						this.bombGroup.remove(b.targetDecal);
+						b.targetDecal = undefined;
+					}
 
 					// Create road impact shockwave ring
 					const ringGeo = new THREE.RingGeometry(0.4, 0.7, 24);
@@ -484,6 +511,7 @@ export class UfoEncounter {
 			// Clean up bombs passed behind player
 			if (b.z < playerZ - 20) {
 				this.bombGroup.remove(b.mesh);
+				if (b.targetDecal) this.bombGroup.remove(b.targetDecal);
 				if (b.shockwave) this.bombGroup.remove(b.shockwave);
 				this.bombs.splice(i, 1);
 			}
@@ -494,13 +522,16 @@ export class UfoEncounter {
 		for (const b of this.bombs) {
 			if (!b.active) continue;
 
+			// A bomb high in the air above player does not hit the player
+			if (b.falling && b.y > 0.85) continue;
+
 			const dz = Math.abs(playerZ - b.z);
 			const dx = Math.abs(playerX - b.x);
 
-			// Bomb bounding box
-			if (dz < 0.9 && dx < 0.9) {
-				// Can jump over bomb if player is high enough (jumpY > 0.85)
-				if (playerJumpY < 0.85) {
+			// Fair, responsive bounding box (0.75m radius)
+			if (dz < 0.75 && dx < 0.75) {
+				// Normal jump cleanly clears the bomb
+				if (playerJumpY < 0.55) {
 					onBombHit(b);
 					return true;
 				}
@@ -512,6 +543,7 @@ export class UfoEncounter {
 	destroyBomb(b: Bomb): void {
 		b.active = false;
 		this.bombGroup.remove(b.mesh);
+		if (b.targetDecal) this.bombGroup.remove(b.targetDecal);
 		if (b.shockwave) this.bombGroup.remove(b.shockwave);
 	}
 
@@ -520,10 +552,10 @@ export class UfoEncounter {
 		this.nextTriggerDistance = 160;
 		this.encounterTimer = 0;
 		this.bombsDropped = 0;
-		this.followDist = 10.0;
-		this.targetFollowDist = 10.0;
-		this.followHeight = 3.4;
-		this.targetFollowHeight = 3.4;
+		this.followDist = 20.0;
+		this.targetFollowDist = 20.0;
+		this.followHeight = 4.5;
+		this.targetFollowHeight = 4.5;
 		this.postureTimer = 0;
 		this.ufoBody.visible = false;
 		if (this.alertCallback) this.alertCallback(false);
@@ -531,6 +563,7 @@ export class UfoEncounter {
 		// Clear all bombs
 		for (const b of this.bombs) {
 			this.bombGroup.remove(b.mesh);
+			if (b.targetDecal) this.bombGroup.remove(b.targetDecal);
 			if (b.shockwave) this.bombGroup.remove(b.shockwave);
 		}
 		this.bombs = [];
