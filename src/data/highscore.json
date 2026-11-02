@@ -56,9 +56,19 @@
       "score": 1487
     },
     {
+      "id": "cf333318-7550-48f0-9e5f-5aa42410bf0b",
+      "name": "Royall",
+      "score": 1192
+    },
+    {
       "id": "b2148d12-2ce2-450c-a1ac-0aeb5571d1cf",
       "name": "Nytro",
       "score": 1154
+    },
+    {
+      "id": "44ef4c09-3d83-47a6-a299-e2194002768d",
+      "name": "Royall",
+      "score": 818
     },
     {
       "id": "07a8e69f-5126-4097-830f-0fc388db3284",
@@ -89,16 +99,6 @@
       "id": "8555aeb6-b878-4af0-a690-317c05000e34",
       "name": "nytro",
       "score": 449
-    },
-    {
-      "id": "f28c290b-7a7c-42c4-b4e7-ef9afa307aa2",
-      "name": "Royall",
-      "score": 65
-    },
-    {
-      "id": "699952e9-0fbb-42e9-be5d-16bf33f503b6",
-      "name": "Royall",
-      "score": 65
     }
   ]
 }

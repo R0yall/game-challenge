@@ -1,5 +1,5 @@
 import { Game, type GameState } from './game/Game.ts';
-import { getLeaderboard, recordScore } from './leaderboard.ts';
+import { getLeaderboard, recordScore, fetchLeaderboard } from './leaderboard.ts';
 
 // Get DOM Elements
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -99,6 +99,17 @@ for (const id of ['btn-start-leaderboard', 'btn-end-leaderboard']) {
 	button.addEventListener('click', () => openLeaderboard(button));
 }
 closeLeaderboardButton.addEventListener('click', closeLeaderboard);
+
+// Initial cloud sync with Dreamlo
+void fetchLeaderboard().then((scores) => {
+	renderLeaderboard();
+	if (scores.length > 0 && scores[0].score > game.highScore) {
+		game.highScore = scores[0].score;
+		game.highScoreName = scores[0].name;
+		startBest.innerText = `${game.highScore} — ${game.highScoreName}`;
+		startBestContainer.classList.remove('hidden');
+	}
+});
 game.onRunFinished = (name, score) => {
 	game.scoreSaveFailed = false;
 	void recordScore(name, score).then(saved => {

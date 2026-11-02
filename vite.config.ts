@@ -10,7 +10,6 @@ export default defineConfig({
 		configureServer(server) {
 			server.watcher.unwatch(scoreFile);
 			server.middlewares.use('/__highscore', (req, res) => {
-				// Only accept writes from the machine running Vite.
 				const address = req.socket.remoteAddress;
 				if (req.method !== 'POST' || req.headers['content-type'] !== 'application/json' || !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address || '')) {
 					res.writeHead(403).end();
@@ -42,6 +41,13 @@ export default defineConfig({
 	}],
 	server: {
 		port: 5173,
-		host: true
+		host: true,
+		proxy: {
+			'/api/dreamlo': {
+				target: 'http://dreamlo.com',
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/api\/dreamlo/, '')
+			}
+		}
 	}
 });
