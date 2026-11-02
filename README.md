@@ -23,8 +23,9 @@ This repository is built for an AI Vibecoding Challenge between 2 developers:
 | Turn | Developer | Feature / Additions | Notes |
 |:---:|:---|:---|:---|
 | **0** | Base Setup | **Clean Pure Three.js + Vite Engine:** Mathematically seamless downhill slope, rolling cyber ball with jump & roll physics, procedural hurdles, pillars & moving obstacles, gem pickups, Web Audio SFX, HUD, ESC pause menu, game over & restart, high score in localStorage, responsive & touch controls. | Initial release ready for Turn 1! |
-| **1** | *Next Dev* | *(Your new feature here)* | *(Vibecoded with AI)* |
-| **2** | *Next Dev* | *(Your new feature here)* | *(Vibecoded with AI)* |
+| **1** | Nytro | **Top 20 Leaderboard & Rainbow Cat Invincibility:** Named high scores saved to shared JSON, Top 20 leaderboard modal, rainbow cat player model with rainbow trail, invincibility power-up gems with speed streaks and custom synth chime. | Turn 1 additions |
+| **2** | Royall | **Random 3D UFO Encounter:** Procedural 12-sided low-poly metallic saucer with turquoise panels, pulsing cyan rim LEDs, glowing undercarriage thruster beam, and a mystery alien pilot in the cockpit. The UFO swoops down from space, dynamically varies its pursuit distance and altitude (zooming close, hovering, or retreating high into orbit), sways across lanes, drops falling spiked cyber-bombs with road impact shockwaves, and rockets back into space. Includes retro synth alarms, drop & warp SFX, and HUD alert banner. Also adds player name persistence in localStorage. | Turn 2 additions |
+| **3** | *Next Dev* | *(Your new feature here)* | *(Vibecoded with AI)* |
 
 ---
 
@@ -89,6 +90,7 @@ Built with pure, modular Three.js — making it exceptionally clean and easy for
         ├── Obstacles.ts    # Jumpable hurdles, tall pillars, moving lasers, gems
         ├── Starfield.ts    # Single-drawcall cosmic star particles
         ├── Audio.ts        # Procedural retro SFX synthesizer (Web Audio API)
+        ├── UfoEncounter.ts # 3D Low-poly saucer, mystery alien pilot, dynamic pursuit & bomb hazards
         └── Game.ts         # Master game loop, camera tracking, collisions
 ```
 

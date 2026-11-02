@@ -195,6 +195,109 @@ export class SoundManager {
 			});
 		} catch {}
 	}
+
+	playUfoAlarm(): void {
+		if (this.muted) return;
+		try {
+			const ctx = this.getContext();
+			if (!ctx) return;
+			const now = ctx.currentTime;
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+
+			osc.type = 'sine';
+			osc.frequency.setValueAtTime(580, now);
+			osc.frequency.linearRampToValueAtTime(880, now + 0.15);
+			osc.frequency.linearRampToValueAtTime(580, now + 0.3);
+			osc.frequency.linearRampToValueAtTime(980, now + 0.45);
+
+			gain.gain.setValueAtTime(0.2, now);
+			gain.gain.linearRampToValueAtTime(0.001, now + 0.5);
+
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			osc.start(now);
+			osc.stop(now + 0.5);
+		} catch {}
+	}
+
+	playUfoDrop(): void {
+		if (this.muted) return;
+		try {
+			const ctx = this.getContext();
+			if (!ctx) return;
+			const now = ctx.currentTime;
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+
+			osc.type = 'sawtooth';
+			osc.frequency.setValueAtTime(950, now);
+			osc.frequency.exponentialRampToValueAtTime(180, now + 0.35);
+
+			gain.gain.setValueAtTime(0.15, now);
+			gain.gain.linearRampToValueAtTime(0.001, now + 0.35);
+
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			osc.start(now);
+			osc.stop(now + 0.35);
+		} catch {}
+	}
+
+	playBombExplode(): void {
+		if (this.muted) return;
+		try {
+			const ctx = this.getContext();
+			if (!ctx) return;
+			const now = ctx.currentTime;
+			const bufferSize = Math.floor(ctx.sampleRate * 0.4);
+			const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+			const data = buffer.getChannelData(0);
+			for (let i = 0; i < bufferSize; i++) {
+				data[i] = Math.random() * 2 - 1;
+			}
+			const noise = ctx.createBufferSource();
+			noise.buffer = buffer;
+
+			const filter = ctx.createBiquadFilter();
+			filter.type = 'lowpass';
+			filter.frequency.setValueAtTime(450, now);
+			filter.frequency.linearRampToValueAtTime(40, now + 0.38);
+
+			const gain = ctx.createGain();
+			gain.gain.setValueAtTime(0.4, now);
+			gain.gain.linearRampToValueAtTime(0.001, now + 0.4);
+
+			noise.connect(filter);
+			filter.connect(gain);
+			gain.connect(ctx.destination);
+			noise.start(now);
+			noise.stop(now + 0.4);
+		} catch {}
+	}
+
+	playUfoWarp(): void {
+		if (this.muted) return;
+		try {
+			const ctx = this.getContext();
+			if (!ctx) return;
+			const now = ctx.currentTime;
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+
+			osc.type = 'triangle';
+			osc.frequency.setValueAtTime(300, now);
+			osc.frequency.exponentialRampToValueAtTime(2400, now + 0.6);
+
+			gain.gain.setValueAtTime(0.2, now);
+			gain.gain.linearRampToValueAtTime(0.001, now + 0.6);
+
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			osc.start(now);
+			osc.stop(now + 0.6);
+		} catch {}
+	}
 }
 
 export const sounds = new SoundManager();

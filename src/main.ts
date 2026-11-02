@@ -11,6 +11,7 @@ const mobileControls = document.getElementById('mobile-controls') as HTMLElement
 
 // HUD Elements
 const powerBanner = document.getElementById('power-banner') as HTMLElement;
+const ufoAlert = document.getElementById('ufo-alert') as HTMLElement;
 const powerCountdown = document.getElementById('power-countdown') as HTMLElement;
 const hudScore = document.getElementById('hud-score') as HTMLElement;
 const hudBest = document.getElementById('hud-best') as HTMLElement;
@@ -53,6 +54,15 @@ const btnTouchJump = document.getElementById('btn-touch-jump') as HTMLButtonElem
 
 // Initialize Game
 const game = new Game(canvas);
+(window as any).__game = game;
+
+try {
+	const savedPlayerName = localStorage.getItem('viberunner_player_name') || '';
+	if (savedPlayerName) {
+		playerNameInput.value = savedPlayerName;
+		game.playerName = savedPlayerName;
+	}
+} catch {}
 
 const leaderboardModal = document.getElementById('leaderboard-modal') as HTMLElement;
 const leaderboardList = document.getElementById('leaderboard-list') as HTMLOListElement;
@@ -115,6 +125,7 @@ game.setUIListener({
 		pauseMenu.classList.add('hidden');
 		gameOverModal.classList.add('hidden');
 		hud.classList.add('hidden');
+		ufoAlert?.classList.add('hidden');
 		mobileControls.classList.add('hidden');
 
 		if (state === 'idle') {
@@ -150,6 +161,9 @@ game.setUIListener({
 			}
 		}
 	},
+	onUfoAlert: (active: boolean) => {
+		ufoAlert?.classList.toggle('hidden', !active);
+	},
 	onPowerUpdate: (remaining: number) => {
 		powerBanner.classList.toggle('hidden', remaining <= 0);
 		powerCountdown.textContent = String(Math.ceil(remaining));
@@ -171,9 +185,19 @@ function startFirstRun(): void {
 	}
 	nameError.classList.add('hidden');
 	game.playerName = name;
+	try { localStorage.setItem('viberunner_player_name', name); } catch {}
 	game.start();
 }
-playerNameInput.addEventListener('input', () => nameError.classList.add('hidden'));
+playerNameInput.addEventListener('input', () => {
+	nameError.classList.add('hidden');
+	try {
+		const val = playerNameInput.value.trim();
+		if (val) {
+			localStorage.setItem('viberunner_player_name', val);
+			game.playerName = val;
+		}
+	} catch {}
+});
 btnStart.addEventListener('click', startFirstRun);
 btnPause.addEventListener('click', () => game.togglePause());
 btnResume.addEventListener('click', () => game.resume());

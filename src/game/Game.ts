@@ -6,6 +6,7 @@ import { Track } from './Track.ts';
 import { ObstacleManager } from './Obstacles.ts';
 import { Starfield } from './Starfield.ts';
 import { SpeedStreaks } from './SpeedStreaks.ts';
+import { UfoEncounter } from './UfoEncounter.ts';
 import { sounds } from './Audio.ts';
 import {
 	BASE_SPEED,
@@ -22,6 +23,7 @@ export interface GameUIListener {
 	onStateChange: (state: GameState, score: number, highScore: number, isNewBest: boolean) => void;
 	onSoundToggle: (isMuted: boolean) => void;
 	onPowerUpdate: (remaining: number) => void;
+	onUfoAlert?: (active: boolean) => void;
 }
 
 export class Game {
@@ -52,6 +54,7 @@ export class Game {
 	public obstacles: ObstacleManager;
 	public starfield: Starfield;
 	private speedStreaks: SpeedStreaks;
+	public ufo: UfoEncounter;
 
 	private uiListener?: GameUIListener;
 	private lastTime = 0;
@@ -70,6 +73,8 @@ export class Game {
 				this.highScore = localScore;
 				this.highScoreName = localStorage.getItem('viberunner_highscore_name') || 'Unknown';
 			}
+			const savedName = localStorage.getItem('viberunner_player_name');
+			if (savedName) this.playerName = savedName;
 		} catch {}
 
 		// 1. Scene & Renderer
@@ -123,6 +128,12 @@ export class Game {
 
 		this.speedStreaks = new SpeedStreaks();
 		this.slopeGroup.add(this.speedStreaks.group);
+
+		// 3D UFO Encounter
+		this.ufo = new UfoEncounter((alert) => {
+			this.uiListener?.onUfoAlert?.(alert);
+		});
+		this.slopeGroup.add(this.ufo.group);
 
 		// Starfield in world space
 		this.starfield = new Starfield();
@@ -195,7 +206,6 @@ export class Game {
 				localStorage.setItem('viberunner_highscore', String(this.highScore));
 				localStorage.setItem('viberunner_highscore_name', this.highScoreName);
 			} catch {}
-
 		}
 
 		if (Math.floor(this.score) > 0) this.onRunFinished?.(this.playerName, Math.floor(this.score));
@@ -221,6 +231,7 @@ export class Game {
 		this.player.reset();
 		this.track.reset();
 		this.obstacles.reset();
+		this.ufo.reset();
 		this.updateCamera(1.0);
 		this.starfield.update(this.camera.position);
 
@@ -299,6 +310,9 @@ export class Game {
 			this.track.update(this.player.z);
 			this.obstacles.update(dt, this.player.z, runSpeed);
 
+			// Update UFO Encounter
+			this.ufo.update(dt, this.player.z, this.player.x, runSpeed);
+
 			// Collect first so a gem can activate protection on the same frame as a hit.
 			this.obstacles.checkGems(this.player.x, this.player.z, () => {
 				this.gems += 1;
@@ -312,9 +326,21 @@ export class Game {
 				}
 			});
 
+			// Check track obstacle collisions
 			if (this.obstacles.checkCollision(this.player.x, this.player.z, this.player.jumpY, this.powerRemaining > 0, () => sounds.playSmash())) {
 				this.triggerGameOver();
 			}
+
+			// Check UFO bomb collisions
+			this.ufo.checkCollision(this.player.x, this.player.z, this.player.jumpY, (bomb) => {
+				if (this.powerRemaining > 0) {
+					this.ufo.destroyBomb(bomb);
+					sounds.playSmash();
+					this.score += 150;
+				} else {
+					this.triggerGameOver();
+				}
+			});
 
 			// Notify UI
 			if (this.uiListener) {
