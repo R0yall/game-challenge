@@ -111,7 +111,8 @@ void fetchLeaderboard().then((scores) => {
 	}
 });
 game.onRunFinished = (name, score) => {
-	game.scoreSaveFailed = false;
+	if (game.testMode) return;
+ game.scoreSaveFailed = false;
 	void recordScore(name, score).then(saved => {
 		if (!saved) { game.scoreSaveFailed = true; scoreSaveError.classList.remove('hidden'); }
 		if (!leaderboardModal.classList.contains('hidden')) renderLeaderboard();
@@ -300,3 +301,13 @@ window.addEventListener('blur', () => {
 		game.pause();
 	}
 });
+
+// Explicit practice mode: no local or remote score writes; debug access only here.
+if (game.testMode) {
+ document.title = 'PRACTICE — CyberSlope (scores disabled)';
+ const badge = document.createElement('div');
+ badge.textContent = 'PRACTICE · SCORES DISABLED';
+ badge.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);color:#73eaff;font:12px monospace;z-index:100;pointer-events:none';
+ document.body.append(badge);
+ Object.assign(window, { __practiceGame: game });
+}

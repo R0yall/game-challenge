@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Course } from './Course.ts';
 import {
 	HALF_TRACK,
 	PLAYER_RADIUS
@@ -8,6 +9,7 @@ export type ObstacleType = 'barrier' | 'pillar' | 'moving';
 
 interface ObstacleEntity {
 	type: ObstacleType;
+ densityRoll: number;
 	x: number;
 	z: number;
 	w: number;
@@ -31,7 +33,7 @@ export class ObstacleManager {
 	private obstacles: ObstacleEntity[] = [];
 	private gems: GemEntity[] = [];
 
-	constructor() {
+	constructor(private course: Course) {
 		this.group = new THREE.Group();
 		this.initObstacles();
 		this.initGems();
@@ -113,6 +115,7 @@ export class ObstacleManager {
 			this.group.add(grp);
 			this.obstacles.push({
 				type,
+    densityRoll: Math.random(),
 				x: laneX,
 				z: startZ,
 				w,
@@ -231,6 +234,7 @@ export class ObstacleManager {
 				const maxZ = Math.max(...this.obstacles.map((o) => o.z));
 				const spacing = Math.max(18, 30 - (currentSpeed - 26) * 0.25);
 				obs.z = maxZ + spacing;
+    obs.densityRoll = Math.random();
 
 				const laneRoll = Math.random();
 				if (laneRoll < 0.33) obs.x = -3.2;
@@ -247,9 +251,11 @@ export class ObstacleManager {
 				obs.group.rotation.set(0, 0, 0);
 				obs.group.position.set(obs.x, 0, obs.z);
 			}
-		}
+   obs.group.visible = obs.densityRoll < this.course.sample(obs.z).density;
+   if (!obs.velocity) this.course.place(obs.group, obs.z, obs.x);
+  }
 
-		// 2. Rotate & recycle gems
+  // 2. Rotate & recycle gems
 		for (const gem of this.gems) {
 			if (!gem.collected) {
 				gem.mesh.rotation.y += dt * 3.2;
@@ -269,12 +275,15 @@ export class ObstacleManager {
 
 				gem.mesh.position.set(gem.x, 1.2, gem.z);
 			}
-		}
-	}
+   this.course.place(gem.mesh, gem.z, gem.x, 1.2);
+   gem.mesh.rotateY(performance.now() / 1000 * 3.2);
+   gem.mesh.visible = !gem.collected && !this.course.sample(gem.z).gap;
+  }
+ }
 
-	checkCollision(playerX: number, playerZ: number, playerJumpY: number, powered: boolean, onSmash: () => void): boolean {
+ checkCollision(playerX: number, playerZ: number, playerJumpY: number, powered: boolean, onSmash: () => void): boolean {
 		for (const obs of this.obstacles) {
-			if (obs.velocity) continue;
+			if (obs.velocity || !obs.group.visible || this.course.sample(obs.z).protected) continue;
 			const dz = Math.abs(playerZ - obs.z);
 			const allowedDz = obs.d / 2 + PLAYER_RADIUS * 0.75;
 
@@ -300,7 +309,7 @@ export class ObstacleManager {
 
 	checkGems(playerX: number, playerZ: number, onCollect: () => void): void {
 		for (const gem of this.gems) {
-			if (gem.collected) continue;
+			if (gem.collected || !gem.mesh.visible) continue;
 			const dz = Math.abs(playerZ - gem.z);
 			const dx = Math.abs(playerX - gem.x);
 			if (dz < PLAYER_RADIUS + 0.8 && dx < PLAYER_RADIUS + 0.8) {
@@ -315,6 +324,7 @@ export class ObstacleManager {
 		const laneOffsets = [-3.2, 0, 3.2];
 		this.obstacles.forEach((obs, idx) => {
 			obs.z = 55 + idx * 28;
+   obs.densityRoll = Math.random();
 			obs.x = laneOffsets[idx % laneOffsets.length];
 			if (obs.type === 'moving') {
 				obs.speedX = (idx % 2 === 0 ? 1 : -1) * 5.5;
@@ -332,5 +342,6 @@ export class ObstacleManager {
 			gem.mesh.visible = true;
 			gem.mesh.position.set(gem.x, 1.2, gem.z);
 		});
+  this.update(0, 0, 26);
 	}
 }

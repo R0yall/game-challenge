@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HALF_TRACK, PLAYER_RADIUS, JUMP_VELOCITY, GRAVITY } from './SlopeMath.ts';
+import { Course } from './Course.ts';
 import { sounds } from './Audio.ts';
 
 const TRAIL_COLORS = [0xff334f, 0xff9933, 0xffed55, 0x51e66c, 0x35bfff, 0xa56aff];
@@ -24,10 +25,11 @@ export class Player {
 	public vy = 0;
 	public isGrounded = true;
 	public rollAngle = 0;
-	public moveLeft = false;
+	private steeringVelocity = 0;
+ public moveLeft = false;
 	public moveRight = false;
 
-	constructor() {
+	constructor(private course: Course) {
 		// Pixel-like box shapes keep the cat readable from the chase camera.
 		const materials = new Map<number, THREE.MeshStandardMaterial>();
 		const box = (color: number, w: number, h: number, d: number, x: number, y: number, z: number) => {
@@ -91,7 +93,7 @@ export class Player {
 	}
 
 	triggerJump(): void {
-		if (this.isGrounded) {
+		if (this.isGrounded && !['loop', 'jump', 'corkscrew'].includes(this.course.sample(this.z).kind)) {
 			this.vy = JUMP_VELOCITY;
 			this.isGrounded = false;
 			sounds.playJump();
@@ -106,8 +108,9 @@ export class Player {
 		this.z += moveZ;
 		this.rollAngle += moveZ / PLAYER_RADIUS;
 		const steerSpeed = 16.5;
-		if (this.moveLeft) this.x += steerSpeed * dt;
-		if (this.moveRight) this.x -= steerSpeed * dt;
+		const input = Number(this.moveLeft) - Number(this.moveRight);
+  this.steeringVelocity += (input * steerSpeed - this.steeringVelocity) * (1 - Math.exp(-12 * dt));
+  this.x += this.steeringVelocity * dt;
 		this.x = THREE.MathUtils.clamp(this.x, -HALF_TRACK, HALF_TRACK);
 		if (!this.isGrounded) {
 			this.vy += GRAVITY * dt;
@@ -123,12 +126,13 @@ export class Player {
 			next += TRAIL_SPACING;
 		}
 		this.trailDistance = (this.trailDistance + moveZ) % TRAIL_SPACING;
-		this.updateTransforms();
-		this.updateTrail();
-	}
+		if (['loop', 'jump', 'corkscrew'].includes(this.course.sample(this.z).kind)) { this.jumpY = 0; this.vy = 0; this.isGrounded = true; }
+  this.updateTransforms();
+  this.updateTrail();
+ }
 
-	private updateTransforms(): void {
-		this.group.position.set(this.x, 0, this.z);
+ private updateTransforms(): void {
+		this.course.place(this.group, this.z, this.x);
 		this.cat.position.y = PLAYER_RADIUS + this.jumpY + Math.sin(this.rollAngle * 0.8) * 0.04;
 		this.cat.rotation.z = this.moveLeft ? -0.16 : this.moveRight ? 0.16 : 0;
 		const shadowScale = Math.max(0.35, 1 - this.jumpY * 0.22);
@@ -140,7 +144,9 @@ export class Player {
 			const point = this.trailPoints[i];
 			for (let color = 0; color < TRAIL_COLORS.length; color++) {
 				if (point) {
-					this.trailPosition.set(point.x - this.x, point.y + (2.5 - color) * 0.15, point.z - this.z - 0.85);
+					const frame = this.course.sample(point.z);
+     this.trailPosition.copy(frame.position).add(new THREE.Vector3(point.x, point.y + (2.5 - color) * .15, -.85).applyQuaternion(frame.rotation));
+     this.trailPosition.sub(this.group.position).applyQuaternion(this.group.quaternion.clone().invert());
 					const fade = 1 - i / TRAIL_LENGTH;
 					this.trailScale.set(1.2 * fade, 0.15 * fade, TRAIL_SPACING * 1.15);
 				} else {
@@ -155,7 +161,8 @@ export class Player {
 	}
 
 	reset(): void {
-		this.z = 0; this.x = 0; this.jumpY = 0; this.vy = 0;
+		this.steeringVelocity = 0;
+  this.z = 0; this.x = 0; this.jumpY = 0; this.vy = 0;
 		this.isGrounded = true; this.rollAngle = 0;
 		this.moveLeft = false; this.moveRight = false;
 		this.cat.visible = true;

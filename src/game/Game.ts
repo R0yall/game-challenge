@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import sharedBest from '../data/highscore.json';
 import { Player } from './Player.ts';
+import { Course } from './Course.ts';
 import { Track } from './Track.ts';
 import { ObstacleManager } from './Obstacles.ts';
 import { Starfield } from './Starfield.ts';
@@ -27,7 +28,8 @@ export interface GameUIListener {
 }
 
 export class Game {
-	public state: GameState = 'idle';
+	public readonly testMode = new URLSearchParams(window.location.search).has('test');
+ public state: GameState = 'idle';
 	public score = 0;
 	public highScore = 0;
 	public highScoreName = '';
@@ -51,6 +53,7 @@ export class Game {
 	// Game Entities
 	public player: Player;
 	public track: Track;
+ private course = new Course();
 	public obstacles: ObstacleManager;
 	public starfield: Starfield;
 	private speedStreaks: SpeedStreaks;
@@ -59,7 +62,6 @@ export class Game {
 	private uiListener?: GameUIListener;
 	private lastTime = 0;
 
-	private playerWorldPos = new THREE.Vector3();
 	private targetCamPos = new THREE.Vector3();
 	private lookAtPos = new THREE.Vector3();
 
@@ -98,7 +100,7 @@ export class Game {
 
 		// 3. World Camera - looks down at the downhill slope from behind
 		this.camera = new THREE.PerspectiveCamera(
-			65,
+			75,
 			window.innerWidth / window.innerHeight,
 			0.1,
 			650
@@ -117,13 +119,13 @@ export class Game {
 		this.scene.add(hemi);
 
 		// 5. Entities in slopeGroup
-		this.track = new Track();
+		this.track = new Track(this.course);
 		this.slopeGroup.add(this.track.group);
 
-		this.obstacles = new ObstacleManager();
+		this.obstacles = new ObstacleManager(this.course);
 		this.slopeGroup.add(this.obstacles.group);
 
-		this.player = new Player();
+		this.player = new Player(this.course);
 		this.slopeGroup.add(this.player.group);
 
 		this.speedStreaks = new SpeedStreaks();
@@ -198,7 +200,7 @@ export class Game {
 		this.state = 'gameover';
 		sounds.playCrash();
 
-		const isNewBest = Math.floor(this.score) > this.highScore;
+		const isNewBest = !this.testMode && Math.floor(this.score) > this.highScore;
 		if (isNewBest) {
 			this.highScore = Math.floor(this.score);
 			this.highScoreName = this.playerName;
@@ -208,7 +210,7 @@ export class Game {
 			} catch {}
 		}
 
-		if (Math.floor(this.score) > 0) this.onRunFinished?.(this.playerName, Math.floor(this.score));
+		if (!this.testMode && Math.floor(this.score) > 0) this.onRunFinished?.(this.playerName, Math.floor(this.score));
 		if (this.uiListener) {
 			this.uiListener.onStateChange(this.state, this.score, this.highScore, isNewBest);
 		}
@@ -225,10 +227,11 @@ export class Game {
 		this.powerMusicStep = 0;
 		this.uiListener?.onPowerUpdate(0);
 		this.speedStreaks.group.visible = false;
-		this.camera.fov = 65;
+		this.camera.fov = 75;
 		this.camera.updateProjectionMatrix();
 
-		this.player.reset();
+		this.course.reset();
+  this.player.reset();
 		this.track.reset();
 		this.obstacles.reset();
 		this.ufo.reset();
@@ -241,39 +244,16 @@ export class Game {
 	}
 
 	private updateCamera(lerpFactor = 0.2): void {
-		// Get player's world position (including slope tilt)
-		this.player.group.getWorldPosition(this.playerWorldPos);
-
-		// Calculate world direction of slope
-		const cosA = Math.cos(SLOPE_ANGLE);
-		const sinA = Math.sin(SLOPE_ANGLE);
-
-		// Place camera behind and slightly above the player along world coordinates
-		const camDistBack = 8.5;
-		const camHeightAbove = 3.6;
-
-		this.targetCamPos.set(
-			this.playerWorldPos.x * 0.45,
-			this.playerWorldPos.y + sinA * camDistBack + cosA * camHeightAbove,
-			this.playerWorldPos.z - cosA * camDistBack + sinA * camHeightAbove
-		);
-
-		if (lerpFactor >= 1.0) {
-			this.camera.position.copy(this.targetCamPos);
-		} else {
-			this.camera.position.x += (this.targetCamPos.x - this.camera.position.x) * lerpFactor;
-			this.camera.position.y += (this.targetCamPos.y - this.camera.position.y) * lerpFactor;
-			this.camera.position.z += (this.targetCamPos.z - this.camera.position.z) * lerpFactor;
-		}
-
-		// Look ahead down the slope
-		const lookAheadDist = 18;
-		this.lookAtPos.set(
-			this.playerWorldPos.x * 0.15,
-			this.playerWorldPos.y - sinA * lookAheadDist + 0.5,
-			this.playerWorldPos.z + cosA * lookAheadDist
-		);
-		this.camera.lookAt(this.lookAtPos);
+  const frame = this.course.sample(this.player.z);
+  const localTarget = frame.position.clone().add(new THREE.Vector3(this.player.x * .45, 4.5 + this.player.jumpY * .4, -10).applyQuaternion(frame.rotation));
+  this.slopeGroup.updateMatrixWorld(true);
+  this.targetCamPos.copy(this.slopeGroup.localToWorld(localTarget));
+  const look = frame.position.clone().add(new THREE.Vector3(this.player.x * .3, 1.2, 18).applyQuaternion(frame.rotation));
+  this.lookAtPos.copy(this.slopeGroup.localToWorld(look));
+  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(frame.rotation).transformDirection(this.slopeGroup.matrixWorld);
+  this.camera.up.copy(up);
+  this.camera.position.lerp(this.targetCamPos, lerpFactor);
+  this.camera.lookAt(this.lookAtPos);
 	}
 
 	private loop(time: number): void {
@@ -311,7 +291,7 @@ export class Game {
 			this.obstacles.update(dt, this.player.z, runSpeed);
 
 			// Update UFO Encounter
-			this.ufo.update(dt, this.player.z, this.player.x, runSpeed);
+			this.ufo.update(dt, this.player.z, this.player.x, runSpeed, this.course);
 
 			// Collect first so a gem can activate protection on the same frame as a hit.
 			this.obstacles.checkGems(this.player.x, this.player.z, () => {
@@ -354,7 +334,7 @@ export class Game {
 			this.starfield.update(this.camera.position);
 
 			// Dynamic FOV sensation
-			const targetFov = this.powerRemaining > 0 ? 110 : 65 + (this.speed - BASE_SPEED) * 0.45;
+			const targetFov = this.powerRemaining > 0 ? 110 : 75 + (this.speed - BASE_SPEED) * 0.45;
 			this.camera.fov += (targetFov - this.camera.fov) * (1 - Math.exp(-4 * dt));
 			this.camera.updateProjectionMatrix();
 		}
