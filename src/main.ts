@@ -1,4 +1,5 @@
 import { Game, type GameState } from './game/Game.ts';
+import { getLeaderboard, recordScore } from './leaderboard.ts';
 
 // Get DOM Elements
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -50,6 +51,49 @@ const btnTouchJump = document.getElementById('btn-touch-jump') as HTMLButtonElem
 
 // Initialize Game
 const game = new Game(canvas);
+
+const leaderboardModal = document.getElementById('leaderboard-modal') as HTMLElement;
+const leaderboardList = document.getElementById('leaderboard-list') as HTMLOListElement;
+const leaderboardEmpty = document.getElementById('leaderboard-empty') as HTMLElement;
+const closeLeaderboardButton = document.getElementById('btn-close-leaderboard') as HTMLButtonElement;
+let leaderboardOpener: HTMLButtonElement | null = null;
+
+function renderLeaderboard(): void {
+	const scores = getLeaderboard();
+	leaderboardList.replaceChildren();
+	leaderboardEmpty.classList.toggle('hidden', scores.length > 0);
+	for (const entry of scores) {
+		const row = document.createElement('li');
+		const name = document.createElement('span');
+		const score = document.createElement('strong');
+		name.textContent = entry.name;
+		score.textContent = entry.score.toLocaleString();
+		row.append(name, score);
+		leaderboardList.append(row);
+	}
+}
+function openLeaderboard(button: HTMLButtonElement): void {
+	leaderboardOpener = button;
+	renderLeaderboard();
+	leaderboardModal.classList.remove('hidden');
+	closeLeaderboardButton.focus();
+}
+function closeLeaderboard(): void {
+	leaderboardModal.classList.add('hidden');
+	leaderboardOpener?.focus();
+}
+for (const id of ['btn-start-leaderboard', 'btn-end-leaderboard']) {
+	const button = document.getElementById(id) as HTMLButtonElement;
+	button.addEventListener('click', () => openLeaderboard(button));
+}
+closeLeaderboardButton.addEventListener('click', closeLeaderboard);
+game.onRunFinished = (name, score) => {
+	game.scoreSaveFailed = false;
+	void recordScore(name, score).then(saved => {
+		if (!saved) { game.scoreSaveFailed = true; scoreSaveError.classList.remove('hidden'); }
+		if (!leaderboardModal.classList.contains('hidden')) renderLeaderboard();
+	});
+};
 
 // Hook UI to Game State
 game.setUIListener({
@@ -148,6 +192,11 @@ btnTouchJump.addEventListener('mousedown', (e) => { e.preventDefault(); game.pla
 
 // Global Keyboard Events
 window.addEventListener('keydown', (e: KeyboardEvent) => {
+	if (!leaderboardModal.classList.contains('hidden')) {
+		if (e.code === 'Escape') { e.preventDefault(); closeLeaderboard(); }
+		return;
+	}
+	if (e.target instanceof HTMLButtonElement && (e.code === 'Space' || e.code === 'Enter')) return;
 	if (e.target === playerNameInput) {
 		if (e.code === 'Enter') { e.preventDefault(); startFirstRun(); }
 		return;

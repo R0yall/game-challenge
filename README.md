@@ -64,7 +64,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser to play!
 
 ### Sharing the high score
 
-Enter your name before starting. When you beat the best score while playing at `localhost` with `npm run dev`, the game updates `src/data/highscore.json`. Commit and push that file with your changes to share the record; other developers receive it when they pull. It does not push automatically.
+Enter your name before starting. Every completed run while playing at `localhost` with `npm run dev` is considered for the top 20 in `src/data/highscore.json`. Open the leaderboard from the start or game-over screen. Commit and push that file with your changes to share the record; other developers receive it when they pull. It does not push automatically.
 
 Scores also stay in the current browser's local storage. The production build and games opened through a network address cannot write the project file, so their scores remain local to that browser. To share a score, play from localhost in the development server. Existing unnamed browser records appear as “Unknown”.
 

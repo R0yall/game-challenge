@@ -90,6 +90,8 @@
 					<span class="btn-subtext">PRESS ENTER OR CLICK</span>
 				</button>
 
+				<button id="btn-start-leaderboard" class="btn-secondary leaderboard-button" type="button">🏆 TOP 20 SCORES</button>
+
 				<div id="start-best-container" class="high-score-banner hidden">
 					🏆 Current Best: <strong id="start-best">0</strong>
 				</div>
@@ -155,11 +157,23 @@
 					</div>
 				</div>
 
+				<button id="btn-end-leaderboard" class="btn-secondary leaderboard-button" type="button">🏆 TOP 20 SCORES</button>
+
 				<p id="score-save-error" class="name-error hidden" role="status">Score saved in this browser, but not to the project file. Play on localhost with npm run dev to update it.</p>
 
 				<button id="btn-restart" class="btn-restart">
 					PLAY AGAIN <span class="hint">SPACE / CLICK / R</span>
 				</button>
+			</div>
+		</div>
+
+		<div id="leaderboard-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
+			<div class="card leaderboard-card">
+				<div class="badge">HALL OF FAME</div>
+				<h2 id="leaderboard-title">TOP 20 SCORES</h2>
+				<p id="leaderboard-empty">No scores yet. Be the first to play!</p>
+				<ol id="leaderboard-list" class="leaderboard-list"></ol>
+				<button id="btn-close-leaderboard" class="btn-secondary" type="button">CLOSE</button>
 			</div>
 		</div>
 

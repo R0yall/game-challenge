@@ -23,10 +23,11 @@ export interface GameUIListener {
 export class Game {
 	public state: GameState = 'idle';
 	public score = 0;
-	public highScore = sharedBest.score;
-	public highScoreName = sharedBest.name;
+	public highScore = 0;
+	public highScoreName = '';
 	public playerName = '';
 	public scoreSaveFailed = false;
+	public onRunFinished?: (name: string, score: number) => void;
 	public distance = 0;
 	public speed = BASE_SPEED;
 	public gems = 0;
@@ -51,6 +52,8 @@ export class Game {
 	private lookAtPos = new THREE.Vector3();
 
 	constructor(canvas: HTMLCanvasElement) {
+		const best = sharedBest.scores[0] as { name: string; score: number } | undefined;
+		if (best) { this.highScore = best.score; this.highScoreName = best.name; }
 		try {
 			const saved = localStorage.getItem('viberunner_highscore');
 			const localScore = Number.parseInt(saved || '0', 10) || 0;
@@ -180,13 +183,10 @@ export class Game {
 				localStorage.setItem('viberunner_highscore', String(this.highScore));
 				localStorage.setItem('viberunner_highscore_name', this.highScoreName);
 			} catch {}
-			if (import.meta.env.DEV) {
-				fetch('/__highscore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: this.highScoreName, score: this.highScore }) })
-					.then(response => { if (!response.ok) throw new Error('Could not save score'); })
-					.catch(() => { this.scoreSaveFailed = true; if (this.state === 'gameover') this.uiListener?.onStateChange(this.state, this.score, this.highScore, true); });
-			}
+
 		}
 
+		if (Math.floor(this.score) > 0) this.onRunFinished?.(this.playerName, Math.floor(this.score));
 		if (this.uiListener) {
 			this.uiListener.onStateChange(this.state, this.score, this.highScore, isNewBest);
 		}
