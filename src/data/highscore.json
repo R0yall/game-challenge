@@ -11,6 +11,11 @@
       "score": 4926
     },
     {
+      "id": "royall-4800",
+      "name": "Royall",
+      "score": 4800
+    },
+    {
       "id": "9e71927b-55ef-48e6-94ef-ca67f5cfb164",
       "name": "Nytro",
       "score": 4642
@@ -94,11 +99,6 @@
       "id": "26bd1e01-a23e-42dc-a031-eb4570620c06",
       "name": "Royall",
       "score": 675
-    },
-    {
-      "id": "8555aeb6-b878-4af0-a690-317c05000e34",
-      "name": "nytro",
-      "score": 449
     }
   ]
 }

@@ -34,10 +34,11 @@ try {
 export function getLeaderboard(): ScoreEntry[] {
 	const map = new Map<string, ScoreEntry>();
 	// Cloud scores take priority, then shared file fallback, then localStorage
+	// Deduplicate identical (name + score) combinations across cloud and local cache
 	for (const entry of [...cloudScores, ...sharedScores, ...localScores]) {
-		const existing = map.get(entry.name);
-		if (!existing || entry.score > existing.score) {
-			map.set(entry.name, entry);
+		const key = `${entry.name}_${entry.score}`;
+		if (!map.has(key)) {
+			map.set(key, entry);
 		}
 	}
 	return [...map.values()].sort((a, b) => b.score - a.score).slice(0, 20);
@@ -58,11 +59,14 @@ export async function fetchLeaderboard(): Promise<ScoreEntry[]> {
 			if (raw) {
 				const list = Array.isArray(raw) ? raw : [raw];
 				cloudScores = list
-					.map((item: any, idx: number) => ({
-						id: `dreamlo-${item.name}-${idx}`,
-						name: String(item.name || 'Unknown'),
-						score: parseInt(item.score, 10) || 0
-					}))
+					.map((item: any, idx: number) => {
+						const displayName = item.text || (typeof item.name === 'string' ? item.name.split('_')[0] : 'Unknown');
+						return {
+							id: `dreamlo-${item.name || idx}`,
+							name: String(displayName),
+							score: parseInt(item.score, 10) || 0
+						};
+					})
 					.filter((e: ScoreEntry) => e.score > 0);
 
 				try {
@@ -81,8 +85,12 @@ export async function fetchLeaderboard(): Promise<ScoreEntry[]> {
 export async function recordScore(name: string, score: number): Promise<boolean> {
 	const cleanName = name.trim().slice(0, 24) || 'Player';
 	const safeScore = Math.floor(score);
+	const runId = Math.random().toString(36).slice(2, 8);
+	const runKey = encodeURIComponent(`${cleanName.slice(0, 10)}_${runId}`);
+	const nameText = encodeURIComponent(cleanName);
+
 	const entry: ScoreEntry = {
-		id: `local-${Date.now()}`,
+		id: `local-${runId}`,
 		name: cleanName,
 		score: safeScore
 	};
@@ -95,8 +103,8 @@ export async function recordScore(name: string, score: number): Promise<boolean>
 
 	let submitted = false;
 	const endpoints = [
-		`${DREAMLO_BASE}/${DREAMLO_PRIVATE}/add/${encodeURIComponent(cleanName)}/${safeScore}`,
-		`http://dreamlo.com/lb/${DREAMLO_PRIVATE}/add/${encodeURIComponent(cleanName)}/${safeScore}`
+		`${DREAMLO_BASE}/${DREAMLO_PRIVATE}/add/${runKey}/${safeScore}/0/${nameText}`,
+		`http://dreamlo.com/lb/${DREAMLO_PRIVATE}/add/${runKey}/${safeScore}/0/${nameText}`
 	];
 
 	for (const url of endpoints) {
