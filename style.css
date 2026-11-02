@@ -519,3 +519,26 @@ h2 {
 .leaderboard-list li { padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); }
 .leaderboard-list li span { display: inline-block; max-width: 70%; overflow-wrap: anywhere; }
 .leaderboard-list li strong { float: right; color: #00f0ff; }
+
+.power-banner {
+	position: absolute;
+	top: 105px;
+	left: 50%;
+	z-index: 3;
+	width: max-content;
+	max-width: 95vw;
+	text-align: center;
+	font-size: clamp(1.1rem, 3vw, 2.2rem);
+	font-weight: 900;
+	color: #fff56a;
+	text-shadow: 0 2px 0 #9b1664, 0 0 12px #ff3bad, 0 0 25px #5315ab;
+	animation: power-bounce 0.6s ease-in-out infinite alternate;
+	pointer-events: none;
+}
+@keyframes power-bounce {
+	from { transform: translate(-50%, 0); }
+	to { transform: translate(-50%, 12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.power-banner { animation: none; transform: translateX(-50%); }
+}

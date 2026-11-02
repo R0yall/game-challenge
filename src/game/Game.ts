@@ -5,6 +5,7 @@ import { Player } from './Player.ts';
 import { Track } from './Track.ts';
 import { ObstacleManager } from './Obstacles.ts';
 import { Starfield } from './Starfield.ts';
+import { SpeedStreaks } from './SpeedStreaks.ts';
 import { sounds } from './Audio.ts';
 import {
 	BASE_SPEED,
@@ -12,12 +13,15 @@ import {
 	SLOPE_ANGLE
 } from './SlopeMath.ts';
 
+const powerGemInterval = () => 20 + Math.floor(Math.random() * 11);
+
 export type GameState = 'idle' | 'playing' | 'paused' | 'gameover';
 
 export interface GameUIListener {
 	onScoreUpdate: (score: number, distance: number, speed: number, gems: number) => void;
 	onStateChange: (state: GameState, score: number, highScore: number, isNewBest: boolean) => void;
 	onSoundToggle: (isMuted: boolean) => void;
+	onPowerUpdate: (remaining: number) => void;
 }
 
 export class Game {
@@ -31,6 +35,10 @@ export class Game {
 	public distance = 0;
 	public speed = BASE_SPEED;
 	public gems = 0;
+	private powerRemaining = 0;
+	private nextPowerGem = powerGemInterval();
+	private powerMusicTime = 0;
+	private powerMusicStep = 0;
 
 	// Three.js Core
 	private scene: THREE.Scene;
@@ -43,6 +51,7 @@ export class Game {
 	public track: Track;
 	public obstacles: ObstacleManager;
 	public starfield: Starfield;
+	private speedStreaks: SpeedStreaks;
 
 	private uiListener?: GameUIListener;
 	private lastTime = 0;
@@ -111,6 +120,9 @@ export class Game {
 
 		this.player = new Player();
 		this.slopeGroup.add(this.player.group);
+
+		this.speedStreaks = new SpeedStreaks();
+		this.slopeGroup.add(this.speedStreaks.group);
 
 		// Starfield in world space
 		this.starfield = new Starfield();
@@ -197,6 +209,14 @@ export class Game {
 		this.distance = 0;
 		this.speed = BASE_SPEED;
 		this.gems = 0;
+		this.powerRemaining = 0;
+		this.nextPowerGem = powerGemInterval();
+		this.powerMusicTime = 0;
+		this.powerMusicStep = 0;
+		this.uiListener?.onPowerUpdate(0);
+		this.speedStreaks.group.visible = false;
+		this.camera.fov = 65;
+		this.camera.updateProjectionMatrix();
 
 		this.player.reset();
 		this.track.reset();
@@ -257,26 +277,44 @@ export class Game {
 				this.speed += dt * 0.45;
 			}
 
+			if (this.powerRemaining > 0) {
+				this.powerRemaining = Math.max(0, this.powerRemaining - dt);
+				if (this.powerRemaining === 0) this.nextPowerGem = this.gems + powerGemInterval();
+				this.powerMusicTime -= dt;
+				if (this.powerRemaining > 0 && this.powerMusicTime <= 0) {
+					sounds.playPowerNote(this.powerMusicStep++);
+					this.powerMusicTime += 0.15;
+				}
+			}
+			this.player.setPowerFlash(this.powerRemaining > 0, time / 1000);
+			this.uiListener?.onPowerUpdate(this.powerRemaining);
+			const runSpeed = this.speed * (this.powerRemaining > 0 ? 1.4 : 1);
 			// Update Player
-			this.player.update(dt, this.speed);
+			this.player.update(dt, runSpeed);
+			this.speedStreaks.update(this.powerRemaining > 0, dt, this.player.x, this.player.z, runSpeed);
 			this.distance = this.player.z;
-			this.score += this.speed * dt * 0.8;
+			this.score += runSpeed * dt * 0.8;
 
 			// Update Track & Obstacles
 			this.track.update(this.player.z);
-			this.obstacles.update(dt, this.player.z, this.speed);
+			this.obstacles.update(dt, this.player.z, runSpeed);
 
-			// Collisions
-			if (this.obstacles.checkCollision(this.player.x, this.player.z, this.player.jumpY)) {
-				this.triggerGameOver();
-			}
-
-			// Gems
+			// Collect first so a gem can activate protection on the same frame as a hit.
 			this.obstacles.checkGems(this.player.x, this.player.z, () => {
 				this.gems += 1;
 				this.score += 50;
 				sounds.playGem();
+				if (this.powerRemaining === 0 && this.gems >= this.nextPowerGem) {
+					this.powerRemaining = 10;
+					this.powerMusicTime = 0;
+					this.powerMusicStep = 0;
+					this.uiListener?.onPowerUpdate(this.powerRemaining);
+				}
 			});
+
+			if (this.obstacles.checkCollision(this.player.x, this.player.z, this.player.jumpY, this.powerRemaining > 0, () => sounds.playSmash())) {
+				this.triggerGameOver();
+			}
 
 			// Notify UI
 			if (this.uiListener) {
@@ -290,8 +328,8 @@ export class Game {
 			this.starfield.update(this.camera.position);
 
 			// Dynamic FOV sensation
-			const targetFov = 65 + (this.speed - BASE_SPEED) * 0.45;
-			this.camera.fov += (targetFov - this.camera.fov) * 0.05;
+			const targetFov = this.powerRemaining > 0 ? 110 : 65 + (this.speed - BASE_SPEED) * 0.45;
+			this.camera.fov += (targetFov - this.camera.fov) * (1 - Math.exp(-4 * dt));
 			this.camera.updateProjectionMatrix();
 		}
 

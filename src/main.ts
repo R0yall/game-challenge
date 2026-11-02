@@ -10,6 +10,8 @@ const gameOverModal = document.getElementById('game-over-modal') as HTMLElement;
 const mobileControls = document.getElementById('mobile-controls') as HTMLElement;
 
 // HUD Elements
+const powerBanner = document.getElementById('power-banner') as HTMLElement;
+const powerCountdown = document.getElementById('power-countdown') as HTMLElement;
 const hudScore = document.getElementById('hud-score') as HTMLElement;
 const hudBest = document.getElementById('hud-best') as HTMLElement;
 const hudDist = document.getElementById('hud-dist') as HTMLElement;
@@ -147,6 +149,10 @@ game.setUIListener({
 				gameOverBadge.innerText = '💥 CRASHED!';
 			}
 		}
+	},
+	onPowerUpdate: (remaining: number) => {
+		powerBanner.classList.toggle('hidden', remaining <= 0);
+		powerCountdown.textContent = String(Math.ceil(remaining));
 	},
 	onSoundToggle: (isMuted: boolean) => {
 		const label = isMuted ? '🔇' : '🔊';

@@ -19,17 +19,40 @@ export class Track {
 		// Shared Geometries & Materials
 		const roadGeo = new THREE.BoxGeometry(TRACK_WIDTH, 0.4, SEGMENT_LENGTH);
 		const railGeo = new THREE.BoxGeometry(0.35, 0.9, SEGMENT_LENGTH);
-		const centerLineGeo = new THREE.BoxGeometry(0.2, 0.04, SEGMENT_LENGTH);
-
-		const darkRoadMat = new THREE.MeshStandardMaterial({
-			color: 0x111322,
-			roughness: 0.35,
-			metalness: 0.25
-		});
-		const lightRoadMat = new THREE.MeshStandardMaterial({
-			color: 0x171a2e,
-			roughness: 0.35,
-			metalness: 0.25
+		// A small nearest-neighbour texture gives each road tile a crisp retro look.
+		// Thirty rows fit each segment exactly, so recycled sections join cleanly.
+		const canvas = document.createElement('canvas');
+		const tilePixels = 8;
+		const columns = 12;
+		const rows = 30;
+		canvas.width = columns * tilePixels;
+		canvas.height = rows * tilePixels;
+		const context = canvas.getContext('2d');
+		if (!context) throw new Error('Could not create road texture');
+		const colors = ['#ff426b', '#ff963f', '#ffe458', '#56e895', '#35cfff', '#9a78ff'];
+		for (let z = 0; z < rows; z++) {
+			for (let x = 0; x < columns; x++) {
+				// The color pattern repeats at the segment boundaries.
+				context.fillStyle = colors[(x + Math.floor(z / 5)) % colors.length];
+				context.fillRect(x * tilePixels, z * tilePixels, tilePixels, tilePixels);
+				context.fillStyle = (x + z) % 2 === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(28,0,54,0.14)';
+				context.fillRect(x * tilePixels, z * tilePixels, tilePixels, tilePixels);
+				context.fillStyle = 'rgba(255,255,255,0.16)';
+				context.fillRect(x * tilePixels, z * tilePixels, tilePixels, 1);
+				context.fillRect(x * tilePixels, z * tilePixels, 1, tilePixels);
+			}
+		}
+		const roadTexture = new THREE.CanvasTexture(canvas);
+		roadTexture.colorSpace = THREE.SRGBColorSpace;
+		roadTexture.magFilter = THREE.NearestFilter;
+		roadTexture.minFilter = THREE.NearestFilter;
+		const roadMat = new THREE.MeshStandardMaterial({
+			map: roadTexture,
+			emissive: 0xffffff,
+			emissiveMap: roadTexture,
+			emissiveIntensity: 0.3,
+			roughness: 0.6,
+			metalness: 0.1
 		});
 
 		const leftRailMat = new THREE.MeshStandardMaterial({
@@ -46,17 +69,11 @@ export class Track {
 			roughness: 0.1
 		});
 
-		const centerLineMat = new THREE.MeshStandardMaterial({
-			color: 0xffff00,
-			emissive: 0xffcc00,
-			emissiveIntensity: 1.2
-		});
-
 		for (let i = 0; i < TOTAL_SEGMENTS; i++) {
 			const segGroup = new THREE.Group();
 
 			// Road slab: top surface is flush at y = 0
-			const roadMesh = new THREE.Mesh(roadGeo, i % 2 === 0 ? darkRoadMat : lightRoadMat);
+			const roadMesh = new THREE.Mesh(roadGeo, roadMat);
 			roadMesh.position.y = -0.2;
 			segGroup.add(roadMesh);
 
@@ -69,11 +86,6 @@ export class Track {
 			const rightRail = new THREE.Mesh(railGeo, rightRailMat);
 			rightRail.position.set(TRACK_WIDTH / 2, 0.35, 0);
 			segGroup.add(rightRail);
-
-			// Glowing center lane stripe
-			const centerLine = new THREE.Mesh(centerLineGeo, centerLineMat);
-			centerLine.position.set(0, 0.01, 0);
-			segGroup.add(centerLine);
 
 			const startZ = i * SEGMENT_LENGTH;
 			segGroup.position.set(0, 0, startZ + SEGMENT_LENGTH / 2);

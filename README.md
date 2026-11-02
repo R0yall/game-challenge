@@ -2,7 +2,7 @@
 
 An infinite 3D runner game built with **Pure Three.js** and **Vite (TypeScript)**.
 
-Glide down a glowing neon downhill slope into infinity. Dodge monolithic pillars, jump over laser barriers, avoid moving hazards, and collect diamonds while your speed intensifies.
+Race down a glowing neon downhill slope as a pixel cat, leaving a rainbow trail behind you. Dodge monolithic pillars, jump over laser barriers, avoid moving hazards, and collect diamonds while your speed intensifies.
 
 ---
 
@@ -84,7 +84,7 @@ Built with pure, modular Three.js — making it exceptionally clean and easy for
     ├── main.ts             # Entry point: binds inputs, UI events, starts game
     └── game/
         ├── SlopeMath.ts    # Downhill slope math & coordinate projection
-        ├── Player.ts       # Rolling sphere, steering & jump physics, shadow
+        ├── Player.ts       # Pixel cat, rainbow trail, steering & jump physics, shadow
         ├── Track.ts        # Seamless downhill road segments & neon rails
         ├── Obstacles.ts    # Jumpable hurdles, tall pillars, moving lasers, gems
         ├── Starfield.ts    # Single-drawcall cosmic star particles

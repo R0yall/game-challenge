@@ -130,6 +130,43 @@ export class SoundManager {
 		} catch {}
 	}
 
+	// A short original arcade arpeggio, advanced by game time so pausing stops it.
+	playPowerNote(step: number): void {
+		if (this.muted) return;
+		try {
+			const ctx = this.getContext();
+			if (!ctx) return;
+			const notes = [523.25, 659.25, 783.99, 1046.5, 880, 783.99, 659.25, 880, 587.33, 698.46, 880, 1174.66, 1046.5, 880, 698.46, 783.99];
+			const now = ctx.currentTime;
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.type = 'square';
+			osc.frequency.setValueAtTime(notes[step % notes.length], now);
+			gain.gain.setValueAtTime(0.045, now);
+			gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+			osc.connect(gain); gain.connect(ctx.destination);
+			osc.start(now); osc.stop(now + 0.13);
+		} catch {}
+	}
+
+	playSmash(): void {
+		if (this.muted) return;
+		try {
+			const ctx = this.getContext();
+			if (!ctx) return;
+			const now = ctx.currentTime;
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.type = 'sawtooth';
+			osc.frequency.setValueAtTime(240, now);
+			osc.frequency.exponentialRampToValueAtTime(45, now + 0.22);
+			gain.gain.setValueAtTime(0.16, now);
+			gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+			osc.connect(gain); gain.connect(ctx.destination);
+			osc.start(now); osc.stop(now + 0.24);
+		} catch {}
+	}
+
 	playStart(): void {
 		if (this.muted) return;
 		try {

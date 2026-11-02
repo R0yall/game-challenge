@@ -15,6 +15,8 @@ interface ObstacleEntity {
 	d: number;
 	speedX?: number;
 	group: THREE.Group;
+	velocity?: THREE.Vector3;
+	spin?: THREE.Vector3;
 }
 
 interface GemEntity {
@@ -123,19 +125,67 @@ export class ObstacleManager {
 	}
 
 	private initGems(): void {
-		const gemGeo = new THREE.OctahedronGeometry(0.5, 0);
+		// A flat table, sloped crown and pointed pavilion form a cut gemstone.
+		const vertices: number[] = [];
+		const sides = 8;
+		const ring = (radius: number, y: number, index: number): THREE.Vector3 => {
+			const angle = index * Math.PI * 2 / sides;
+			return new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+		};
+		const triangle = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3) => {
+			vertices.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+		};
+		const top = new THREE.Vector3(0, 0.38, 0);
+		const tip = new THREE.Vector3(0, -0.66, 0);
+		for (let i = 0; i < sides; i++) {
+			const topA = ring(0.29, 0.38, i);
+			const topB = ring(0.29, 0.38, i + 1);
+			const edgeA = ring(0.55, 0.12, i);
+			const edgeB = ring(0.55, 0.12, i + 1);
+			triangle(top, topB, topA);
+			triangle(topA, topB, edgeB);
+			triangle(topA, edgeB, edgeA);
+			triangle(edgeA, edgeB, tip);
+		}
+		const gemGeo = new THREE.BufferGeometry();
+		gemGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+		gemGeo.computeVertexNormals();
 		const gemMat = new THREE.MeshStandardMaterial({
-			color: 0x00ffff,
-			emissive: 0x00ffff,
-			emissiveIntensity: 2.5,
-			roughness: 0.1,
-			metalness: 0.95
+			color: 0x73eaff,
+			emissive: 0x007788,
+			emissiveIntensity: 0.45,
+			roughness: 0.19,
+			metalness: 0.28,
+			flatShading: true
 		});
+
+		// Expanding by position keeps the outline connected at sharp facet seams.
+		const outlineMat = new THREE.ShaderMaterial({
+			vertexShader: `
+				varying vec3 vLocal;
+				void main() {
+					vLocal = position;
+					gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 1.13, 1.0);
+				}
+			`,
+			fragmentShader: `
+				varying vec3 vLocal;
+				void main() {
+					float glow = smoothstep(-0.6, 0.4, vLocal.y);
+					gl_FragColor = vec4(mix(vec3(0.025, 0.025, 0.16), vec3(0.05, 0.24, 0.34), glow), 1.0);
+				}
+			`,
+			side: THREE.BackSide
+		});
+		const facets = new THREE.EdgesGeometry(gemGeo, 12);
+		const facetMat = new THREE.LineBasicMaterial({ color: 0xd5ffff, transparent: true, opacity: 0.65 });
 
 		const laneOffsets = [-3.2, 3.2, 0];
 
 		for (let i = 0; i < 8; i++) {
 			const mesh = new THREE.Mesh(gemGeo, gemMat);
+			mesh.add(new THREE.Mesh(gemGeo, outlineMat));
+			mesh.add(new THREE.LineSegments(facets, facetMat));
 			const gemX = laneOffsets[i % laneOffsets.length];
 			const gemZ = 65 + i * 36;
 
@@ -154,7 +204,13 @@ export class ObstacleManager {
 	update(dt: number, playerZ: number, currentSpeed: number): void {
 		// 1. Move sliding obstacles
 		for (const obs of this.obstacles) {
-			if (obs.type === 'moving' && obs.speedX !== undefined) {
+			if (obs.velocity && obs.spin) {
+				obs.velocity.y -= 24 * dt;
+				obs.group.position.addScaledVector(obs.velocity, dt);
+				obs.group.rotation.x += obs.spin.x * dt;
+				obs.group.rotation.y += obs.spin.y * dt;
+				obs.group.rotation.z += obs.spin.z * dt;
+			} else if (obs.type === 'moving' && obs.speedX !== undefined) {
 				obs.x += obs.speedX * dt;
 				const minX = -HALF_TRACK + 1.2;
 				const maxX = HALF_TRACK - 1.2;
@@ -186,6 +242,9 @@ export class ObstacleManager {
 					obs.speedX = (Math.random() > 0.5 ? 1 : -1) * (5 + Math.random() * 3);
 				}
 
+				obs.velocity = undefined;
+				obs.spin = undefined;
+				obs.group.rotation.set(0, 0, 0);
 				obs.group.position.set(obs.x, 0, obs.z);
 			}
 		}
@@ -213,8 +272,9 @@ export class ObstacleManager {
 		}
 	}
 
-	checkCollision(playerX: number, playerZ: number, playerJumpY: number): boolean {
+	checkCollision(playerX: number, playerZ: number, playerJumpY: number, powered: boolean, onSmash: () => void): boolean {
 		for (const obs of this.obstacles) {
+			if (obs.velocity) continue;
 			const dz = Math.abs(playerZ - obs.z);
 			const allowedDz = obs.d / 2 + PLAYER_RADIUS * 0.75;
 
@@ -226,7 +286,11 @@ export class ObstacleManager {
 					// Check jump clearance
 					const clearance = obs.h - PLAYER_RADIUS * 0.4;
 					if (playerJumpY < clearance) {
-						return true; // CRASH!
+						if (!powered) return true;
+						const direction = obs.x >= playerX ? 1 : -1;
+						obs.velocity = new THREE.Vector3(direction * (7 + Math.random() * 4), 8 + Math.random() * 4, 12 + Math.random() * 5);
+						obs.spin = new THREE.Vector3(4 + Math.random() * 3, direction * 3, -direction * 4);
+						onSmash();
 					}
 				}
 			}
@@ -255,6 +319,9 @@ export class ObstacleManager {
 			if (obs.type === 'moving') {
 				obs.speedX = (idx % 2 === 0 ? 1 : -1) * 5.5;
 			}
+			obs.velocity = undefined;
+			obs.spin = undefined;
+			obs.group.rotation.set(0, 0, 0);
 			obs.group.position.set(obs.x, 0, obs.z);
 		});
 

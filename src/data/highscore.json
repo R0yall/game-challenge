@@ -1,3 +1,49 @@
 {
-  "scores": []
+  "scores": [
+    {
+      "id": "9e71927b-55ef-48e6-94ef-ca67f5cfb164",
+      "name": "Nytro",
+      "score": 4642
+    },
+    {
+      "id": "c0e67c7e-6f77-4f90-800d-ed23a4589aa9",
+      "name": "Nytro",
+      "score": 3674
+    },
+    {
+      "id": "5a105655-b0ae-449f-bad9-1c6f147acd24",
+      "name": "Nytro",
+      "score": 3554
+    },
+    {
+      "id": "cc38a20c-4611-44db-ac95-7e7f2ca1a5d7",
+      "name": "Nytro",
+      "score": 3241
+    },
+    {
+      "id": "381edce4-04b7-4b63-98e1-679ad6862a0e",
+      "name": "Nytro",
+      "score": 2495
+    },
+    {
+      "id": "c36b2d19-c0ec-4fa1-94e2-463546806ce5",
+      "name": "Nytro",
+      "score": 1541
+    },
+    {
+      "id": "16c7d358-80bb-4c82-b4e4-c00bc4f4b157",
+      "name": "Nytro",
+      "score": 1487
+    },
+    {
+      "id": "b2148d12-2ce2-450c-a1ac-0aeb5571d1cf",
+      "name": "Nytro",
+      "score": 1154
+    },
+    {
+      "id": "8555aeb6-b878-4af0-a690-317c05000e34",
+      "name": "nytro",
+      "score": 449
+    }
+  ]
 }
